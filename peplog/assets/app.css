@@ -318,6 +318,7 @@ dialog::backdrop { background: var(--scrim); }
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 10px; max-width: 350px; margin: 4px auto 0; align-items: end;
 }
+.weight-wheels.single-wheel { grid-template-columns: 1fr; }
 .wheel-group { min-width: 0; text-align: center; font-weight: 630; }
 .wheel-group > span { display: block; margin-bottom: 5px; color: var(--muted); font-size: .87rem; }
 .wheel-window {
@@ -339,8 +340,13 @@ dialog::backdrop { background: var(--scrim); }
   font-size: 1.05rem; font-variant-numeric: tabular-nums; color: var(--muted); cursor: pointer;
 }
 .wheel-selected { color: var(--ink); font-size: 1.45rem; font-weight: 730; }
+.wheel-empty { font-size: .8rem; line-height: 1.1; padding-inline: 3px; overflow-wrap: anywhere; }
 .wheel-separator { align-self: end; margin-bottom: 51px; font-size: 1.45rem; font-weight: 730; }
 
+.date-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+.date-picker-control { position: relative; }
+.date-picker-control input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+.date-picker-control .icon-button { position: relative; }
 .dialog-head { display: flex; gap: 12px; justify-content: space-between; align-items: start; padding: 18px 22px 13px; }
 .dialog-head p { margin-top: 4px; font-size: .87rem; color: var(--muted); }
 .dialog-body { padding: 0 22px 20px; }
@@ -447,7 +453,13 @@ dialog .tabs { margin: 0; }
 .weight-panel { max-width: 1050px; }
 .bf511-fields { border: 1px solid var(--faint); border-radius: 10px; margin: 0; padding: 10px; min-inline-size: 0; }
 .bf511-fields legend { font-weight: 680; font-size: .94rem; }
-.bf511-fields .form-grid { margin-top: 8px; }
+.bf511-pickers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+.bf511-picker { min-inline-size: 0; margin: 0; padding: 6px 8px; border: 1px solid var(--faint); border-radius: 8px; }
+.bf511-picker .weight-wheels { gap: 6px; }
+.bf511-picker .help { text-align: center; margin-top: 5px; }
+@media (max-width: 450px) {
+  .bf511-pickers { grid-template-columns: minmax(0, 1fr); }
+}
 .composition-table { overflow-x: auto; }
 .composition-table .catalog { min-width: 540px; }
 .composition-table .catalog tbody th { background: none; color: var(--ink); font-weight: 500; }

@@ -1,6 +1,6 @@
 # Add Advanced Weight Monitoring to an existing Peplog site
 
-This update adds one column to your current database and replaces selected Peplog files. Your existing accounts, PINs, product permissions, journal entries and saved reports carry over. Advanced Weight Monitoring starts off for everyone.
+This update keeps your existing accounts, PINs, product permissions, journal entries and saved reports. If you already added the `advanced_weight_monitor` column in an earlier update, start at step 3. If this is your first Advanced Weight Monitoring update, start at step 1. The new column defaults to off.
 
 ## 1. Back up your Peplog database
 
@@ -39,16 +39,18 @@ The query adds one column. It does not import a database or recreate any account
 | **peplog-private/** · locales.json, schema.sql | **[cPanel Home]/peplog-private/** |
 | **peplog-private/src/** · journal.php, api.php, reporting.php, services.php | **[cPanel Home]/peplog-private/src/** |
 | **peplog-private/bin/** · reports.php | **[cPanel Home]/peplog-private/bin/** |
+| **peplog-private/views/** · head.php | **[cPanel Home]/peplog-private/views/** |
 
-For a cPanel home directory of **/home/account**, the private folder is **/home/account/peplog-private**. Keep your existing **config.php** in place. Run the SQL query in step 2 against the live database. The updated **schema.sql** file in the ZIP is for fresh installations.
+For a cPanel home directory of **/home/account**, the private folder is **/home/account/peplog-private**. Keep your existing **config.php** in place. The updated **schema.sql** file in the ZIP is for fresh installations. The only SQL needed for an existing site is in step 2, if the column is missing.
 
 [cPanel Domains](https://docs.cpanel.net/cpanel/domains/domains/) · [cPanel File Manager](https://docs.cpanel.net/cpanel/files/file-manager/)
 
 ## 4. Turn on Advanced Weight Monitoring
 
 1. Open Peplog, refresh the page with **Ctrl+F5** on Windows, and sign in as the administrator.
-2. Go to **Admin → Users**, select a user, and turn on **Enable advanced weight monitoring**. The two weight monitoring checkboxes work independently. Repeat for each user who should have access.
-3. In that user's journal, open **Advanced Weight Monitoring** and choose **Log BF511 readings**. Pick the weigh-in date. If there is already a weight for that date, the form loads it. Enter the scale's body fat percentage, skeletal muscle percentage and visceral fat level. Leave any unavailable values blank.
-4. Use the **Weigh-in history** table to add or edit readings later. Select a metric above the chart to see its recorded values over time.
+2. Go to **Admin → Users** and select a user. Turn on **Enable advanced weight monitoring** or **Enable weight monitoring**. Turning on either option switches the other off. If both were enabled in an earlier version, the user opens in advanced mode. Clear the enabled checkbox to hide weight monitoring for that user.
+3. In that user's calendar, select a date and choose **Adv. log weight** for advanced monitoring or **Log weight** for standard monitoring. The form loads any weigh-in for the selected date and defaults to the last recorded weight when adding a new one.
+4. Scroll, tap a number, or use the arrow keys on the rolling selectors. Weight, body fat and skeletal muscle have one decimal digit. Visceral fat level uses whole numbers. Select **Not recorded** for an unavailable BF511 reading.
+5. Open **Advanced Weight Monitoring** and use **Weigh-in history** to edit readings later. Select a metric above the chart to see its recorded values over time.
 
-Weekly and monthly reports generated after the update list the recorded BF511 readings for users with advanced monitoring enabled. A metric with multiple readings in the period shows its first-to-last change. Percentage changes are expressed in percentage points. The existing cron command runs the updated report script at the same path.
+Weekly and monthly reports list BF511 readings for advanced users. A metric with multiple readings shows its first-to-last change. Percentage changes are expressed in percentage points. English dates are shown day-first in the journal, entry forms and new report emails.

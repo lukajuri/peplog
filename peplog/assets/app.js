@@ -44,10 +44,12 @@ const message = (text, values)=>t(text).replace(/\{(\w+)\}/g,(_,key)=>values[key
 const h = value=>String(value ?? '').replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const label = value=>h(t(value));
 const icon = name=>`<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${iconPaths[name]}"></path></svg>`;
-const formatDay = (date, opts)=>new Intl.DateTimeFormat(state.lang,{ timeZone:'UTC', ...opts }).format(new Date(date+'T12:00:00Z'));
+const dateLocale = ()=>state.lang==='en'?'en-GB':state.lang;
+const formatDay = (date, opts)=>new Intl.DateTimeFormat(dateLocale(),{ timeZone:'UTC', ...opts }).format(new Date(date+'T12:00:00Z'));
 const num = (amount, opts={})=>new Intl.NumberFormat(state.lang,opts).format(amount);
 const longDate = date=>formatDay(date,{weekday:'long',month:'long',day:'numeric'});
 const shortDate = date=>formatDay(date,{month:'short',day:'numeric'});
+const englishDate = date=>date.split('-').reverse().join('/');
 const calendarName = product=>productName(product).replace(/\s+\([^)]*\)$/, '');
 
 function localClock(timeZone=account().prefs.timeZone, timestamp=new Date()) {
@@ -97,6 +99,8 @@ const pageInfo = {
 };
 const pagePermissions={admin:'admin',weight:'weightMonitor',advancedWeight:'advancedWeightMonitor'};
 const canOpenPage=page=>!pagePermissions[page]||account()[pagePermissions[page]];
+const weightMode=()=>account().advancedWeightMonitor?'advanced':account().weightMonitor?'standard':'';
+const weightLabel=()=>weightMode()==='advanced'?'Adv. log weight':'Log weight';
 const button = (text, action, {glyph='', variant='', attrs=''}={})=>
   `<button type="button" class="button ${variant ? 'button-'+variant : ''}" data-action="${action}" ${attrs}>${glyph?icon(glyph):''}${label(text)}</button>`;
 const iconButton = (text, action, glyph, attrs='')=>
@@ -117,7 +121,7 @@ function nav() {
 }
 function renderShell() {
   const who = account();
-  document.documentElement.lang=state.lang;
+  document.documentElement.lang=dateLocale();
   document.documentElement.dataset.theme=who.prefs.theme;
   q('.skip').textContent=t('Skip to main content');
   for (const selector of ['#side-nav','#mobile-nav']) {
@@ -169,14 +173,21 @@ function selectDateForEntry() {
   return state.selected<=current?state.selected:current;
 }
 
+function logWeightButton(options={}) {
+  const mode=weightMode();
+  return mode?button(weightLabel(),mode==='advanced'?'log-bf511':'weight',options):'';
+}
+
 function renderCalendar() {
   const current=today();
+  const showWeight=!!weightMode();
   const start = state.month + '-01';
   const offset = (weekdayNumber(start)+6)%7;
   const end = shiftDate(changeMonth(state.month,1)+'-01',-1);
   const cells = Math.ceil((offset+Number(end.slice(-2)))/7)*7;
   const index = new Map();
   for (const entry of account().entries) {
+    if (entry.type==='weight'&&!showWeight) continue;
     if (!index.has(entry.date)) index.set(entry.date, []);
     index.get(entry.date).push(entry);
   }
@@ -195,8 +206,9 @@ function renderCalendar() {
       data-action="date" data-value="${date}"><span class="day-number">${Number(date.slice(-2))}</span>
       <span class="markers" aria-hidden="true">${applications}${otherMarkers}</span></button>`;
   }).join('');
-  const legend = Object.entries(typeLabel).map(([kind,text])=>`<span class="legend-item ${kind}">${icon(kind)}${label(text)}</span>`).join('');
-  return pageHeader('Calendar',t('See your observations, applications and weight by date.'),
+  const legend = Object.entries(typeLabel).filter(([kind])=>kind!=='weight'||showWeight)
+    .map(([kind,text])=>`<span class="legend-item ${kind}">${icon(kind)}${label(text)}</span>`).join('');
+  return pageHeader('Calendar',t(showWeight?'See your observations, applications and weight by date.':'See your observations and applications by date.'),
     button('Voice note','voice',{glyph:'microphone'})+button('New entry','new',{glyph:'plus',variant:'primary'}))+
     `<div class="calendar-layout"><section class="card calendar-card" aria-label="${label('Calendar')}">
       <div class="cal-top"><h2 class="cal-title">${h(formatDay(start,{month:'long',year:'numeric'}))}</h2>
@@ -230,7 +242,8 @@ function renderRecord(entry) {
 function renderDay() {
   const date=state.selected;
   const current=today();
-  const entries=account().entries.filter(entry=>entry.date===date)
+  const showWeight=!!weightMode();
+  const entries=account().entries.filter(entry=>entry.date===date&&(entry.type!=='weight'||showWeight))
     .sort((a,b)=>(a.time??'').localeCompare(b.time??''));
   const addable=date<=current;
   let detail=entries.length?entries.map(renderRecord).join(''):`<p class="empty small">${label('No entries for this day.')}</p>`;
@@ -238,11 +251,11 @@ function renderDay() {
     <span>${label(date===current?'Today':'Selected day')}</span><h2>${h(formatDay(date,{weekday:'long',month:'short',day:'numeric'}))}</h2></div>
     ${addable?iconButton('New entry','new','plus'):''}</div>
     <div class="records">${detail}</div>
-    ${addable?`<div class="row-actions day-secondary">${button('Add observation','note',{variant:'quiet'})}${button('Log weight','weight',{variant:'quiet'})}</div>`:''}
+    ${addable?`<div class="row-actions day-secondary">${button('Add observation','note',{variant:'quiet'})}${logWeightButton({variant:'quiet'})}</div>`:''}
   </section>`;
 }
 function renderReminder() {
-  if (!account().prefs.weigh) return '';
+  if (!weightMode()||!account().prefs.weigh) return '';
   const current=today();
   const last=account().entries.filter(entry=>entry.type==='weight'&&entry.date<=current).sort((a,b)=>b.date.localeCompare(a.date))[0];
   if (last && ageInDays(last.date,current)<6) return '';
@@ -252,7 +265,7 @@ function renderReminder() {
     <h3>${label(title)}</h3><p class="small muted">${h(caption)}</p>
     <p class="small">${label('Weekly measurements help you compare weight over time.')}</p>
     <p class="small">${label('Weigh in the morning, after emptying your bladder and before eating or drinking, without clothes or in light underwear.')}</p>
-    ${button('Log weight','weight',{glyph:'plus',attrs:'data-today="true"'})}</section>`;
+    ${logWeightButton({glyph:'plus',attrs:'data-today="true"'})}</section>`;
 }
 
 
@@ -261,7 +274,7 @@ function weightEntries() {
 }
 function renderWeightMonitoring() {
   const measurements=weightEntries();
-  const heading=pageHeader('Weight monitoring','',button('Log weight','weight',{glyph:'plus',variant:'primary',attrs:'data-today="true"'}));
+  const heading=pageHeader('Weight monitoring','',logWeightButton({glyph:'plus',variant:'primary',attrs:'data-today="true"'}));
   if (measurements.length===0) {
     return heading+`<section class="card panel"><p class="muted">${label('Log a weight to start your chart.')}</p></section>`;
   }
@@ -290,7 +303,7 @@ function bf511Value(amount, metric) {
 }
 function renderAdvancedWeightMonitoring() {
   const measurements=weightEntries();
-  const heading=pageHeader('Advanced Weight Monitoring','OMRON BF511',button('Log BF511 readings','log-bf511',{glyph:'plus',variant:'primary'}));
+  const heading=pageHeader('Advanced Weight Monitoring','OMRON BF511',logWeightButton({glyph:'plus',variant:'primary',attrs:'data-today="true"'}));
   if (!measurements.length) {
     return heading+`<section class="card panel"><p class="muted">${label('Log a weight to start your chart.')}</p></section>`;
   }
@@ -545,6 +558,34 @@ function formFooter(text, canRemove=false) {
     ${canRemove?button('Remove','remove',{variant:'danger'}):''}
     ${button('Cancel','close')}${submit(text)}</div>`;
 }
+function dateField(date, max) {
+  if (state.lang!=='en') return field('Date',`<input type="date" name="date" value="${date}" max="${max}" required>`);
+  const picker=typeof HTMLInputElement.prototype.showPicker==='function'?`<div class="date-picker-control">
+    <input type="date" value="${date}" max="${max}" data-date-picker tabindex="-1" aria-hidden="true">
+    ${iconButton('Choose a date','pick-date','calendar')}
+  </div>`:'';
+  return `<div class="field"><label for="record-date">${label('Date')}</label>
+    <div class="date-controls"><input id="record-date" name="date" type="text" value="${englishDate(date)}"
+      inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" aria-describedby="record-date-hint" required>${picker}</div>
+    <small id="record-date-hint">DD/MM/YYYY</small>
+  </div>`;
+}
+function readEntryDate(input) {
+  if (input.type==='date') return input.value;
+  const value=input.value.trim();
+  const parts=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value)??/^(\d{2})(\d{2})(\d{4})$/.exec(value);
+  if (!parts||Number(parts[3])<1000) return '';
+  const [,day,month,year]=parts;
+  const iso=`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+  const parsed=new Date(iso+'T12:00:00Z');
+  return !Number.isNaN(parsed.valueOf())&&parsed.toISOString().startsWith(iso)?iso:'';
+}
+function checkedEntryDate(form) {
+  const date=readEntryDate(form.elements.date);
+  if (!date) throw new Error('Enter a valid date as DD/MM/YYYY.');
+  if (date>today()) throw new Error('Choose today or an earlier date.');
+  return date;
+}
 function openEntry(type='application', existing=null, note='') {
   const enabledMethods=methodsFor(availableProducts(),existing?.route);
   const mode=type==='application'&&enabledMethods.length===0?'note':type;
@@ -555,7 +596,7 @@ function openEntry(type='application', existing=null, note='') {
   const textarea=`<textarea name="note" rows="3" maxlength="2000" placeholder="${label('Add an observation in your own words')}">${h(existing?.note??note)}</textarea>`;
   showDialog(existing?'Edit entry':'New entry','',`<form id="entry-form" class="form-stack">
     <div class="form-grid">
-      ${field('Date',`<input type="date" name="date" required value="${date}" max="${current.date}">`)}
+      ${dateField(date,current.date)}
       <div id="entry-time">${field('Time',`<input type="time" name="time" value="${time}" required>`)}</div>
     </div>
     <div id="entry-detail"></div>
@@ -658,8 +699,8 @@ function showConcentration() {
 }
 async function saveEntry(form) {
   const entry=state.entry;
+  const date=checkedEntryDate(form);
   const formData=new FormData(form);
-  const date=String(formData.get('date'));
   const note=String(formData.get('note')??'').trim();
   const record={ id:entry.existing?.id??'', type:entry.type, date, note };
   if (entry.type==='note'&&!note) throw new Error('Enter your observation.');
@@ -681,31 +722,29 @@ async function saveEntry(form) {
   setDate(date);
   notify('Entry saved');
 }
-function openWeight(existing=null, today=false, advanced=false) {
-  if (advanced&&!account().advancedWeightMonitor) return;
+function openWeight(existing=null, useToday=false) {
+  const mode=weightMode();
+  if (!mode) return;
   const current=localClock().date;
-  const date=existing?.date??(today?current:selectDateForEntry());
-  const saved=existing??(advanced?weightEntries().find(entry=>entry.date===date):undefined);
-  state.entry={type:'weight',existing,advanced,originalReadings:saved?.bf511??{}};
-  const previous=latestWeight();
-  const amount=Math.round((saved?.amount??previous?.amount??0)*100);
-  const whole=Math.floor(amount/100);
-  const decimal=amount%100;
+  const date=existing?.date??(useToday?current:selectDateForEntry());
+  const saved=existing??weightEntries().find(entry=>entry.date===date);
+  const advanced=mode==='advanced';
+  state.entry={type:'weight',existing,advanced,saved,loadedDate:date};
+  const amount=weightTenths(saved?.amount??latestWeight()?.amount??0);
   const separator=new Intl.NumberFormat(state.lang).formatToParts(0.1).find(part=>part.type==='decimal').value;
-  showDialog(existing?'Edit entry':advanced?'Log BF511 readings':'Log weight',longDate(date),`<form id="weight-form" class="form-stack">
-    ${field('Date',`<input type="date" name="date" value="${date}" required max="${current}">`)}
+  showDialog(existing?'Edit entry':weightLabel(),longDate(date),`<form id="weight-form" class="form-stack">
+    ${dateField(date,current)}
     <fieldset class="weight-picker">
       <legend>${label('Weight (kg)')}</legend>
-      <div class="weight-wheels">${weightWheel('Whole kilograms','whole',Math.max(500,whole),whole)}
-        <span class="wheel-separator" aria-hidden="true">${h(separator)}</span>
-        ${weightWheel('Decimals','decimal',99,decimal)}</div>
+      <div class="weight-wheels">${numberWheel('Whole kilograms','whole',{max:500,value:Math.floor(amount/10)})}
+        ${decimalWheel('decimal',amount%10,separator)}</div>
       <p class="help">${label('Scroll or use the arrow keys to change each value.')}</p>
     </fieldset>
     ${advanced?`<fieldset class="bf511-fields">
       <legend>${label('BF511 readings')}</legend>
-      <p class="help">${label('Copy the readings shown on the scale. Leave unavailable readings blank.')}</p>
-      <div class="form-grid">${Object.entries(bf511Metrics).map(([name,metric])=>
-        field(metric.label,decimalInput(name,saved?.bf511?.[name],false),num(metric.min)+'–'+num(metric.max))
+      <p class="help">${label('Select “Not recorded” for any unavailable reading.')}</p>
+      <div class="bf511-pickers">${Object.entries(bf511Metrics).map(([name,metric])=>
+        bf511Picker(name,metric,saved?.bf511?.[name],separator)
       ).join('')}</div>
     </fieldset>`:''}
     ${info(t('Weigh in the morning, after emptying your bladder and before eating or drinking, without clothes or in light underwear.'))}
@@ -717,30 +756,62 @@ function openWeight(existing=null, today=false, advanced=false) {
     wheel.addEventListener('scroll',()=>updateWheel(wheel),{passive:true});
   }
 }
-function loadBf511Date(form) {
-  const saved=weightEntries().find(entry=>entry.date===form.elements.date.value);
-  state.entry.originalReadings=saved?.bf511??{};
-  const weight=Math.round((saved?.amount??latestWeight()?.amount??0)*100);
-  setWheel(q('[data-wheel="whole"]',form),Math.floor(weight/100));
-  setWheel(q('[data-wheel="decimal"]',form),weight%100);
-  for (const [name,metric] of Object.entries(bf511Metrics)) {
-    const value=saved?.bf511?.[name];
-    form.elements[name].value=value==null?'':num(value,{maximumFractionDigits:metric.decimals,useGrouping:false});
-  }
-}
 function latestWeight() {
   return account().entries.filter(entry=>entry.type==='weight')
     .sort((a,b)=>(b.savedAt??0)-(a.savedAt??0)||b.date.localeCompare(a.date))[0];
 }
-function wheelDisplay(kind, index) {
-  return num(index,{minimumIntegerDigits:kind==='decimal'?2:1,useGrouping:false});
+function weightTenths(amount) {
+  return Math.min(5009,Math.round(amount*10));
 }
-function weightWheel(title, kind, max, value) {
-  const rows=Array.from({length:max+1},(_,i)=>`<span class="wheel-value" data-index="${i}">${wheelDisplay(kind,i)}</span>`).join('');
+function readingParts(metric, value) {
+  if (value==null) return [metric.min-1,0];
+  const scale=10**metric.decimals;
+  const scaled=Math.round(value*scale);
+  return [Math.floor(scaled/scale),scaled%scale];
+}
+function bf511Picker(name, metric, value, separator) {
+  const [whole,decimal]=readingParts(metric,value);
+  return `<fieldset class="bf511-picker"><legend>${label(metric.label)}</legend>
+    <div class="weight-wheels${metric.decimals?'':' single-wheel'}">
+      ${numberWheel('Whole number',name,{min:metric.min,max:metric.max,value:whole,optional:true})}
+      ${metric.decimals?decimalWheel(name+'-decimal',decimal,separator):''}
+    </div>
+    <p class="help">${h(num(metric.min)+'–'+num(metric.max))}</p>
+  </fieldset>`;
+}
+function loadWeighIn(form, date) {
+  if (state.entry.existing||state.entry.loadedDate===date) return;
+  const saved=weightEntries().find(entry=>entry.date===date);
+  state.entry.loadedDate=date;
+  state.entry.saved=saved;
+  const weight=weightTenths(saved?.amount??latestWeight()?.amount??0);
+  setWheel(q('[data-wheel="whole"]',form),Math.floor(weight/10));
+  setWheel(q('[data-wheel="decimal"]',form),weight%10);
+  if (state.entry.advanced) {
+    for (const [name,metric] of Object.entries(bf511Metrics)) {
+      const [whole,decimal]=readingParts(metric,saved?.bf511?.[name]);
+      setWheel(q(`[data-wheel="${name}"]`,form),whole);
+      if (metric.decimals) setWheel(q(`[data-wheel="${name}-decimal"]`,form),decimal);
+    }
+  }
+}
+function decimalWheel(kind, value, separator) {
+  return `<span class="wheel-separator" aria-hidden="true">${h(separator)}</span>`+
+    numberWheel('Decimals',kind,{max:9,value});
+}
+function numberWheel(title, kind, {min=0,max,value,optional=false}) {
+  const first=optional?min-1:min;
+  const digits=new Intl.NumberFormat(state.lang,{useGrouping:false});
+  const rows=Array.from({length:max-first+1},(_,index)=>{
+    const value=first+index;
+    const blank=optional&&index===0;
+    const text=blank?label('Not recorded'):h(digits.format(value));
+    return `<span class="wheel-value${blank?' wheel-empty':''}" data-value="${value}">${text}</span>`;
+  }).join('');
   return `<div class="wheel-group"><span id="wheel-${kind}-label">${label(title)}</span>
     <div class="wheel-window">
       <div class="wheel-track" tabindex="0" role="spinbutton" aria-labelledby="wheel-${kind}-label"
-        aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}" data-wheel="${kind}">
+        aria-valuemin="${first}" aria-valuemax="${max}" aria-valuenow="${value}" data-wheel="${kind}">
         <div class="wheel-rows" aria-hidden="true">${rows}</div>
       </div>
     </div>
@@ -750,35 +821,41 @@ function wheelStep(wheel) {
   return wheel.querySelector('.wheel-value').getBoundingClientRect().height;
 }
 function updateWheel(wheel) {
-  const value=Math.round(wheel.scrollTop/wheelStep(wheel));
-  const selected=wheel.querySelector(`[data-index="${value}"]`);
+  const min=Number(wheel.getAttribute('aria-valuemin'));
+  const value=min+Math.round(wheel.scrollTop/wheelStep(wheel));
+  const selected=wheel.querySelector(`[data-value="${value}"]`);
   if (!selected) return;
   const previous=wheel.querySelector('.wheel-selected');
   previous?.classList.remove('wheel-selected');
   selected.classList.add('wheel-selected');
   wheel.setAttribute('aria-valuenow',String(value));
-  wheel.setAttribute('aria-valuetext',wheelDisplay(wheel.dataset.wheel,value));
+  wheel.setAttribute('aria-valuetext',selected.textContent);
 }
 function setWheel(wheel, value) {
+  const min=Number(wheel.getAttribute('aria-valuemin'));
   const max=Number(wheel.getAttribute('aria-valuemax'));
-  wheel.scrollTop=Math.max(0,Math.min(max,value))*wheelStep(wheel);
+  wheel.scrollTop=(Math.max(min,Math.min(max,value))-min)*wheelStep(wheel);
   updateWheel(wheel);
 }
 async function saveWeight(form) {
+  const date=checkedEntryDate(form);
+  loadWeighIn(form,date);
   const selected=kind=>Number(q(`[data-wheel="${kind}"]`,form).getAttribute('aria-valuenow'));
-  const amount=(100*selected('whole')+selected('decimal'))/100;
-  if (!amount) throw new Error('Choose a weight greater than zero.');
-  const date=form.elements.date.value;
-  const data={id:state.entry.existing?.id??'',type:'weight',date,amount};
+  const tenths=10*selected('whole')+selected('decimal');
+  const saved=state.entry.saved;
+  const data={id:saved?.id??'',type:'weight',date};
+  // Send an amount only when it was entered or changed on the wheels.
+  if (!saved||tenths!==weightTenths(saved.amount)) {
+    if (!tenths) throw new Error('Choose a weight greater than zero.');
+    data.amount=tenths/10;
+  }
   if (state.entry.advanced) {
     const edits={};
     for (const [name,metric] of Object.entries(bf511Metrics)) {
-      const raw=form.elements[name].value.trim();
-      const value=raw===''?null:positiveDecimal(raw);
-      if (raw!==''&&(value==null||value<metric.min||value>metric.max||Number(value.toFixed(metric.decimals))!==value)) {
-        throw new Error('Check the BF511 reading ranges and decimal places.');
-      }
-      if (value!==(state.entry.originalReadings[name]??null)) edits[name]=value;
+      const whole=selected(name);
+      const value=whole<metric.min?null:whole+(metric.decimals?selected(name+'-decimal')/10:0);
+      if (value>metric.max) throw new Error('Check the BF511 reading ranges and decimal places.');
+      if (value!==(state.entry.saved?.bf511?.[name]??null)) edits[name]=value;
     }
     if (Object.keys(edits).length) data.bf511=edits;
   }
@@ -874,7 +951,7 @@ function showEmail() {
   showDialog('Email preview',t('Preview of the message for this account.'),`<div class="form-stack">
     <dl class="delivery-list">
       <dt>${label('Recipient')}</dt><dd>${h(reportRecipient)}</dd>
-      <dt>${label('Subject')}</dt><dd>${label(subject)} · ${h(reportCaption(data.range))}</dd>
+      <dt>${label('Subject')}</dt><dd>${label(subject)} ${h(state.lang==='en'?englishDate(data.range.to):data.range.to)}</dd>
       <dt>${label('Account holder')}</dt><dd>${h(account().display)}</dd>
     </dl>
     ${reportAnalysis(data).map(line=>`<p>${h(line)}</p>`).join('')}
@@ -1027,10 +1104,16 @@ const actions={
   new:()=>openEntry(),
   note:()=>openEntry('note'),
   weight:control=>openWeight(null,control.dataset.today==='true'),
-  'log-bf511':()=>openWeight(null,true,true),
+  'log-bf511':control=>openWeight(null,control.dataset.today==='true'),
   'edit-bf511':control=>{
     const entry=account().entries.find(record=>record.id===control.dataset.value&&record.type==='weight');
-    if (entry) openWeight(entry,false,true);
+    if (entry) openWeight(entry);
+  },
+  'pick-date':control=>{
+    const picker=q('[data-date-picker]',control.form);
+    const date=readEntryDate(control.form.elements.date);
+    picker.value=date<=picker.max?date:'';
+    picker.showPicker();
   },
   'weight-metric':control=>{
     state.weightMetric=control.dataset.value;
@@ -1072,7 +1155,7 @@ document.addEventListener('click',event=>{
   const row=event.target.closest('.wheel-value');
   if (row) {
     const wheel=row.closest('[data-wheel]');
-    setWheel(wheel,Number(row.dataset.index));
+    setWheel(wheel,Number(row.dataset.value));
     wheel.focus({preventScroll:true});
   }
   const control=event.target.closest('[data-action]');
@@ -1082,7 +1165,8 @@ document.addEventListener('keydown',event=>{
   const wheel=event.target.closest('[data-wheel]');
   if (wheel) {
     const value=Number(wheel.getAttribute('aria-valuenow'));
-    const keys={ ArrowUp:value+1, ArrowDown:value-1, PageUp:value+10, PageDown:value-10, Home:0, End:Number(wheel.getAttribute('aria-valuemax')) };
+    const keys={ ArrowUp:value+1, ArrowDown:value-1, PageUp:value+10, PageDown:value-10,
+      Home:Number(wheel.getAttribute('aria-valuemin')), End:Number(wheel.getAttribute('aria-valuemax')) };
     if (Object.hasOwn(keys,event.key)) {
       event.preventDefault();
       setWheel(wheel,keys[event.key]);
@@ -1106,16 +1190,28 @@ document.addEventListener('change',async event=>{
     if (field.dataset.product&&account().admin&&state.page==='admin') {
       await write('grantProduct',{target:accounts[state.catalogUser].id,product:field.dataset.product,on:field.checked});
     }
-    if (field.dataset.weightMonitor&&account().admin&&state.page==='admin') {
-      await write('weightMonitor',{target:Number(field.dataset.weightMonitor),on:field.checked});
+    const monitorAction=field.dataset.advancedWeightMonitor?'advancedWeightMonitor':'weightMonitor';
+    if (field.dataset[monitorAction]&&account().admin&&state.page==='admin') {
+      const target=Number(field.dataset[monitorAction]);
+      await write(monitorAction,{target,on:field.checked});
       renderShell();
+      const selected=accounts[state.catalogUser];
+      if (state.page==='admin'&&state.adminSection==='users'&&selected.id===target) {
+        q(`[data-weight-monitor="${target}"]`).checked=selected.weightMonitor;
+        q(`[data-advanced-weight-monitor="${target}"]`).checked=selected.advancedWeightMonitor;
+      }
     }
-    if (field.dataset.advancedWeightMonitor&&account().admin&&state.page==='admin') {
-      await write('advancedWeightMonitor',{target:Number(field.dataset.advancedWeightMonitor),on:field.checked});
-      renderShell();
+    if (field.matches('[data-date-picker]')&&field.value) {
+      const input=field.form.elements.date;
+      input.value=englishDate(field.value);
+      input.dispatchEvent(new Event('change',{bubbles:true}));
     }
-    if (field.name==='date'&&field.form?.id==='weight-form'&&state.entry.advanced&&!state.entry.existing&&field.validity.valid) {
-      loadBf511Date(field.form);
+    if (field.name==='date'&&['entry-form','weight-form'].includes(field.form?.id)) {
+      const date=readEntryDate(field);
+      if (date&&date<=today()) {
+        if (field.type==='text') field.value=englishDate(date);
+        if (field.form.id==='weight-form') loadWeighIn(field.form,date);
+      }
     }
     if (field.id==='entry-product') {
       state.entry.productId=field.value;

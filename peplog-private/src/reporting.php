@@ -93,6 +93,11 @@ function reportTitle(string $kind): string
     return $kind === 'weekly' ? 'Weekly journal summary' : 'Monthly journal summary';
 }
 
+function reportDate(string $date, string $locale): string
+{
+    return $locale === 'en' ? implode('/', array_reverse(explode('-', $date))) : $date;
+}
+
 function reportBf511Text(array $composition, string $locale): string
 {
     if (!$composition) {
@@ -106,7 +111,7 @@ function reportBf511Text(array $composition, string $locale): string
             continue;
         }
         $readings = array_map(
-            fn(array $row): string => $row['date'] . ' · '
+            fn(array $row): string => reportDate($row['date'], $locale) . ' · '
                 . number_format($row['value'], $metric['decimals'], $decimal, '') . $metric['unit'],
             $summary['readings']
         );
@@ -140,7 +145,8 @@ function reportBody(array $data, string $analysis, string $username): string
         $facts .= "\n" . translate('One weight measurement was recorded ({weight}).', $locale, ['weight' => $first['kg'] . ' kg']);
     }
     return translate('Account holder', $locale) . '  ' . $username . "\n"
-        . $data['from'] . ' – ' . $data['to'] . ' (' . $data['time_zone'] . ")\n\n"
+        . reportDate($data['from'], $locale) . ' – ' . reportDate($data['to'], $locale)
+        . ' (' . $data['time_zone'] . ")\n\n"
         . $facts . reportBf511Text($data['bf511'] ?? [], $locale)
         . "\n\n" . translate('AI analysis', $locale) . "\n" . $analysis . "\n";
 }
@@ -174,7 +180,7 @@ function processMail(PDO $db, array $job): void
 {
     $data = decode($job['payload']);
     try {
-        $title = translate(reportTitle($job['kind']), $data['locale']) . ' ' . $job['period_end'];
+        $title = translate(reportTitle($job['kind']), $data['locale']) . ' ' . reportDate($job['period_end'], $data['locale']);
         $body = reportBody($data, $job['ai_text'], $job['username']);
         $mailId = 'peplog-' . hash('sha256', config()['setup_key'] . ':' . $job['id']);
         smtpSend(config()['report_recipient'], $title, $body, $mailId, function () use ($db, $job): void {

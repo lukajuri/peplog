@@ -37,6 +37,8 @@ foreach ($fixtures as [$date, $weight, $readings]) {
             encode(['date' => $date, 'type' => 'weight', 'amount' => $weight, 'note' => '', 'bf511' => $readings])]);
 }
 must($user['advanced_weight_monitor'] && !$user['weight_monitor'], 'Advanced reporting must work by itself');
+$legacyFlags = publicUser(array_replace($user, ['weight_monitor' => 1]), []);
+must(!$legacyFlags['weightMonitor'] && $legacyFlags['advancedWeightMonitor'], 'Advanced monitoring must take precedence for old dual settings');
 queueReports($db, $user, $before);
 must((int)$db->query('SELECT COUNT(*) FROM pl_reports')->fetchColumn() === 0, 'Report created before cutoff');
 queueReports($db, $user, $at);
@@ -50,9 +52,10 @@ must($week['bf511']['bodyFat']['change'] === -0.6, 'Wrong weekly body fat change
 must($month['bf511']['bodyFat']['change'] === -1.2, 'Wrong monthly body fat change');
 must($week['bf511']['skeletalMuscle']['change'] === null, 'A single reading cannot have a change');
 $email = reportBody($week, 'Fixture analysis.', $user['username']);
-must(str_contains($email, '2027-02-25 · 22.4%') && str_contains($email, 'Recorded change · -0.6 percentage points'), 'Weekly email missing readings and percentage-point change');
-must(str_contains($email, "Visceral fat level — 2027-02-25 · 8 | 2027-02-28 · 7\nRecorded change · -1\n"), 'Visceral fat must use levels');
-must(str_contains(reportBody($month, 'Fixture analysis.', $user['username']), '2027-02-10 · 23.0%'), 'Monthly email missing the earlier reading');
+must(str_contains($email, '22/02/2027 – 28/02/2027'), 'English email dates must be day-first');
+must(str_contains($email, '25/02/2027 · 22.4%') && str_contains($email, 'Recorded change · -0.6 percentage points'), 'Weekly email missing readings and percentage-point change');
+must(str_contains($email, "Visceral fat level — 25/02/2027 · 8 | 28/02/2027 · 7\nRecorded change · -1\n"), 'Visceral fat must use levels');
+must(str_contains(reportBody($month, 'Fixture analysis.', $user['username']), '10/02/2027 · 23.0%'), 'Monthly email missing the earlier reading');
 $user['advanced_weight_monitor'] = 0;
 must(reportSnapshot($db, $user, 'weekly', $at)['bf511'] === [], 'A disabled user was included in the advanced report');
 unset($week['bf511']);

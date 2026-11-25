@@ -28,12 +28,13 @@ function createUser(PDO $db, string $name, string $secret, string $zone, string 
 
 function publicUser(array $user, array $grants): array
 {
+    $advanced = (bool)$user['advanced_weight_monitor'];
     return [
         'id' => (int)$user['id'],
         'username' => $user['username'], 'display' => $user['username'],
         'admin' => (bool)$user['is_admin'],
-        'weightMonitor' => (bool)$user['weight_monitor'],
-        'advancedWeightMonitor' => (bool)$user['advanced_weight_monitor'],
+        'weightMonitor' => !$advanced && (bool)$user['weight_monitor'],
+        'advancedWeightMonitor' => $advanced,
         'visible' => $grants,
         'prefs' => [
             'lang' => $user['locale'], 'timeZone' => $user['timezone'], 'theme' => $user['theme'],
@@ -192,8 +193,9 @@ function saveJournalEntry(PDO $db, array $user, array $input): string
     }
     $existingId = textValue($input, 'id', 24);
     return inTransaction($db, function () use ($db, $userId, $date, $type, $note, $existingId, $input, $hasBf511): string {
-        $hasPermission = query($db, 'SELECT advanced_weight_monitor FROM pl_users WHERE id=? FOR UPDATE', [$userId])->fetchColumn();
-        if ($hasBf511 && !$hasPermission) {
+        $monitoring = query($db, 'SELECT weight_monitor,advanced_weight_monitor FROM pl_users WHERE id=? FOR UPDATE', [$userId])->fetch();
+        if ($type === 'weight' && empty($monitoring['advanced_weight_monitor'])
+            && ($hasBf511 || empty($monitoring['weight_monitor']))) {
             throw new RequestProblem(403, 'Access denied.');
         }
         $existing = $existingId === '' ? null
@@ -206,10 +208,6 @@ function saveJournalEntry(PDO $db, array $user, array $input): string
         if ($type === 'application') {
             $data += applicationData($db, $userId, $input, $existing ? decode($existing['payload']) : null);
         } elseif ($type === 'weight') {
-            $data['amount'] = round(positiveNumber($input['amount'] ?? null, 500.99), 2);
-            if ($data['amount'] <= 0) {
-                throw new RequestProblem(422, 'Choose a weight greater than zero.');
-            }
             $weightDate = $date;
             $sameDay = query($db, 'SELECT id,payload FROM pl_entries WHERE user_id=? AND weight_date=?', [$userId, $date])->fetch();
             if ($sameDay && $existingId !== '' && $existingId !== $sameDay['id']) {
@@ -218,6 +216,12 @@ function saveJournalEntry(PDO $db, array $user, array $input): string
             $existingId = $existingId !== '' ? $existingId : ($sameDay['id'] ?? '');
             $stored = $existing ?: $sameDay;
             $previous = $stored ? decode($stored['payload']) : [];
+            $data['amount'] = !array_key_exists('amount', $input) && ($previous['type'] ?? null) === 'weight'
+                ? $previous['amount']
+                : round(positiveNumber($input['amount'] ?? null, 500.99), 2);
+            if ($data['amount'] <= 0) {
+                throw new RequestProblem(422, 'Choose a weight greater than zero.');
+            }
             $readings = $previous['bf511'] ?? [];
             if ($hasBf511) {
                 $readings = updateBf511($readings, $input['bf511']);
@@ -281,10 +285,14 @@ function adminAction(PDO $db, array $actor, string $action, array $input): void
             }
             break;
         case 'weightMonitor':
-            query($db, 'UPDATE pl_users SET weight_monitor=? WHERE id=?', [!empty($input['on']) ? 1 : 0, $target]);
+            $enabled = !empty($input['on']) ? 1 : 0;
+            query($db, 'UPDATE pl_users SET weight_monitor=?,advanced_weight_monitor=IF(?,0,advanced_weight_monitor) WHERE id=?',
+                [$enabled, $enabled, $target]);
             break;
         case 'advancedWeightMonitor':
-            query($db, 'UPDATE pl_users SET advanced_weight_monitor=? WHERE id=?', [!empty($input['on']) ? 1 : 0, $target]);
+            $enabled = !empty($input['on']) ? 1 : 0;
+            query($db, 'UPDATE pl_users SET weight_monitor=IF(? OR advanced_weight_monitor,0,weight_monitor),advanced_weight_monitor=? WHERE id=?',
+                [$enabled, $enabled, $target]);
             break;
         case 'grantProduct':
             $product = textValue($input, 'product', 48);

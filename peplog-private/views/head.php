@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="<?= esc($lang) ?>">
+<html lang="<?= esc($lang === 'en' ? 'en-GB' : $lang) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
