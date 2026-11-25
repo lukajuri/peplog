@@ -26,12 +26,37 @@ $user = query($db, 'SELECT * FROM pl_users WHERE username=?', ['cimember'])->fet
 $user['created_at'] = '2027-02-25 12:00:00';
 $before = new DateTimeImmutable('2027-02-28 23:58', $zone);
 $at = $before->modify('+1 minute');
+$fixtures = [
+    ['2027-02-10', 75.85, ['bodyFat' => 23.0]],
+    ['2027-02-25', 75.53, ['bodyFat' => 22.4, 'visceralFatLevel' => 8]],
+    ['2027-02-28', 75.31, ['bodyFat' => 21.8, 'skeletalMuscle' => 36.8, 'visceralFatLevel' => 7]],
+];
+foreach ($fixtures as [$date, $weight, $readings]) {
+    query($db, 'INSERT INTO pl_entries (id,user_id,entry_date,weight_date,payload) VALUES (?,?,?,?,?)',
+        [bin2hex(random_bytes(12)), $user['id'], $date, $date,
+            encode(['date' => $date, 'type' => 'weight', 'amount' => $weight, 'note' => '', 'bf511' => $readings])]);
+}
+must($user['advanced_weight_monitor'] && !$user['weight_monitor'], 'Advanced reporting must work by itself');
 queueReports($db, $user, $before);
 must((int)$db->query('SELECT COUNT(*) FROM pl_reports')->fetchColumn() === 0, 'Report created before cutoff');
 queueReports($db, $user, $at);
 queueReports($db, $user, $at);
 must((int)$db->query('SELECT COUNT(*) FROM pl_reports')->fetchColumn() === 2, 'Month-end Sunday must create one of each report');
-must(savedReport($db, $user, 'weekly', '2027-02-28') !== null, 'Weekly report missing for owner');
+$week = savedReport($db, $user, 'weekly', '2027-02-28')['data'];
+$month = savedReport($db, $user, 'monthly', '2027-02-28')['data'];
+must(count($week['bf511']['bodyFat']['readings']) === 2, 'Weekly report contains a reading outside its period');
+must(count($month['bf511']['bodyFat']['readings']) === 3, 'Monthly report is missing a reading');
+must($week['bf511']['bodyFat']['change'] === -0.6, 'Wrong weekly body fat change');
+must($month['bf511']['bodyFat']['change'] === -1.2, 'Wrong monthly body fat change');
+must($week['bf511']['skeletalMuscle']['change'] === null, 'A single reading cannot have a change');
+$email = reportBody($week, 'Fixture analysis.', $user['username']);
+must(str_contains($email, '2027-02-25 · 22.4%') && str_contains($email, 'Recorded change · -0.6 percentage points'), 'Weekly email missing readings and percentage-point change');
+must(str_contains($email, "Visceral fat level — 2027-02-25 · 8 | 2027-02-28 · 7\nRecorded change · -1\n"), 'Visceral fat must use levels');
+must(str_contains(reportBody($month, 'Fixture analysis.', $user['username']), '2027-02-10 · 23.0%'), 'Monthly email missing the earlier reading');
+$user['advanced_weight_monitor'] = 0;
+must(reportSnapshot($db, $user, 'weekly', $at)['bf511'] === [], 'A disabled user was included in the advanced report');
+unset($week['bf511']);
+must(!str_contains(reportBody($week, 'Fixture analysis.', $user['username']), 'BF511 readings'), 'Legacy reports should render without BF511 data');
 $other = query($db, 'SELECT * FROM pl_users WHERE username=?', ['ciadmin'])->fetch();
 must(savedReport($db, $other, 'weekly', '2027-02-28') === null, 'Another account can see this report');
 foreach (array_keys(LOCALES) as $locale) {

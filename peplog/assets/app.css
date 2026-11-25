@@ -443,7 +443,16 @@ dialog .tabs { margin: 0; }
 .auth-card a { text-decoration: none; }
 #startup-error { margin: 34px auto; width: min(95%, 560px); text-align: center; }
 .weight-access { margin: -4px 0 15px; }
+.weight-access .checkbox-row + .checkbox-row { margin-top: 6px; }
 .weight-panel { max-width: 1050px; }
+.bf511-fields { border: 1px solid var(--faint); border-radius: 10px; margin: 0; padding: 10px; min-inline-size: 0; }
+.bf511-fields legend { font-weight: 680; font-size: .94rem; }
+.bf511-fields .form-grid { margin-top: 8px; }
+.composition-table { overflow-x: auto; }
+.composition-table .catalog { min-width: 540px; }
+.composition-table .catalog tbody th { background: none; color: var(--ink); font-weight: 500; }
+.report-composition { display: grid; gap: 9px; margin-top: 14px; }
+.report-composition p { overflow-wrap: anywhere; }
 .weight-chart { width: 100%; height: auto; margin: 18px 0; border-radius: 10px; background: var(--subtle); padding: 7px; }
 .chart-grid line { stroke: var(--line); stroke-width: 1; }
 .chart-grid text, .chart-axis text { fill: var(--muted); font-size: 14px; }

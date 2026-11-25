@@ -23,7 +23,7 @@ if (!flock($lock, LOCK_EX | LOCK_NB)) {
 try {
     $db = database();
     if (($argv[1] ?? '') === '--check') {
-        $db->query('SELECT id FROM pl_users LIMIT 1');
+        $db->query('SELECT id,advanced_weight_monitor FROM pl_users LIMIT 1');
         echo "Database and Peplog tables are reachable.\n";
         foreach (['pdo_mysql', 'curl', 'mbstring', 'openssl', 'fileinfo'] as $extension) {
             echo $extension . ': ' . (extension_loaded($extension) ? 'available' : 'missing') . "\n";
@@ -32,7 +32,7 @@ try {
     }
     $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
     $db->exec('DELETE FROM pl_login_limits WHERE expires_at < UNIX_TIMESTAMP()');
-    foreach ($db->query('SELECT id,locale,timezone,created_at FROM pl_users')->fetchAll() as $user) {
+    foreach ($db->query('SELECT id,locale,timezone,created_at,advanced_weight_monitor FROM pl_users')->fetchAll() as $user) {
         queueReports($db, $user, $now);
     }
     $db->exec("UPDATE pl_reports SET mail_state='uncertain' WHERE mail_state='sending'");

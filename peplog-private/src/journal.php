@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+const BF511_METRICS = [
+    'bodyFat' => ['label' => 'Body fat (%)', 'min' => 5, 'max' => 60, 'decimals' => 1, 'unit' => '%'],
+    'skeletalMuscle' => ['label' => 'Skeletal muscle (%)', 'min' => 5, 'max' => 50, 'decimals' => 1, 'unit' => '%'],
+    'visceralFatLevel' => ['label' => 'Visceral fat level', 'min' => 1, 'max' => 30, 'decimals' => 0, 'unit' => ''],
+];
+
 function createUser(PDO $db, string $name, string $secret, string $zone, string $locale, bool $admin, array $products): int
 {
     $hash = pinHash($secret);
@@ -27,6 +33,7 @@ function publicUser(array $user, array $grants): array
         'username' => $user['username'], 'display' => $user['username'],
         'admin' => (bool)$user['is_admin'],
         'weightMonitor' => (bool)$user['weight_monitor'],
+        'advancedWeightMonitor' => (bool)$user['advanced_weight_monitor'],
         'visible' => $grants,
         'prefs' => [
             'lang' => $user['locale'], 'timeZone' => $user['timezone'], 'theme' => $user['theme'],
@@ -72,6 +79,12 @@ function hydrate(PDO $db, array $user, bool $withLanguages = false): array
     foreach ($records as &$record) {
         if ($record['id'] === $id) {
             $record['entries'] = entries($db, $id);
+            if (!$record['advancedWeightMonitor']) {
+                foreach ($record['entries'] as &$entry) {
+                    unset($entry['bf511']);
+                }
+                unset($entry);
+            }
         }
     }
     unset($record);
@@ -80,6 +93,7 @@ function hydrate(PDO $db, array $user, bool $withLanguages = false): array
         $result['locales'] = LOCALES;
         $result['messages'] = languages();
         $result['reportRecipient'] = (string)config()['report_recipient'];
+        $result['bf511Metrics'] = BF511_METRICS;
     }
     return $result;
 }
@@ -133,6 +147,30 @@ function applicationData(PDO $db, int $owner, array $input, ?array $existing): a
     return $data;
 }
 
+function updateBf511(array $saved, mixed $changes): array
+{
+    if (!is_array($changes)) {
+        throw new RequestProblem(422, 'Invalid request.');
+    }
+    foreach ($changes as $name => $value) {
+        $metric = BF511_METRICS[$name] ?? null;
+        if ($metric === null) {
+            throw new RequestProblem(422, 'Invalid request.');
+        }
+        if ($value === null) {
+            unset($saved[$name]);
+            continue;
+        }
+        if ((!is_int($value) && !is_float($value)) || !is_finite((float)$value)
+            || $value < $metric['min'] || $value > $metric['max']
+            || abs($value - round($value, $metric['decimals'])) > 0.00000001) {
+            throw new RequestProblem(422, 'Check the BF511 reading ranges and decimal places.');
+        }
+        $saved[$name] = $metric['decimals'] === 0 ? (int)$value : round($value, $metric['decimals']);
+    }
+    return $saved;
+}
+
 function saveJournalEntry(PDO $db, array $user, array $input): string
 {
     $userId = (int)$user['id'];
@@ -145,12 +183,19 @@ function saveJournalEntry(PDO $db, array $user, array $input): string
     if (!in_array($type, ['weight', 'note', 'application'], true)) {
         throw new RequestProblem(422, 'Invalid request.');
     }
+    $hasBf511 = array_key_exists('bf511', $input);
+    if ($hasBf511 && $type !== 'weight') {
+        throw new RequestProblem(422, 'Invalid request.');
+    }
     if ($type === 'note' && $note === '') {
         throw new RequestProblem(422, 'Enter your observation.');
     }
     $existingId = textValue($input, 'id', 24);
-    return inTransaction($db, function () use ($db, $userId, $date, $type, $note, $existingId, $input): string {
-        query($db, 'SELECT id FROM pl_users WHERE id=? FOR UPDATE', [$userId]);
+    return inTransaction($db, function () use ($db, $userId, $date, $type, $note, $existingId, $input, $hasBf511): string {
+        $hasPermission = query($db, 'SELECT advanced_weight_monitor FROM pl_users WHERE id=? FOR UPDATE', [$userId])->fetchColumn();
+        if ($hasBf511 && !$hasPermission) {
+            throw new RequestProblem(403, 'Access denied.');
+        }
         $existing = $existingId === '' ? null
             : query($db, 'SELECT payload FROM pl_entries WHERE id=? AND user_id=?', [$existingId, $userId])->fetch();
         if ($existingId !== '' && !$existing) {
@@ -166,11 +211,23 @@ function saveJournalEntry(PDO $db, array $user, array $input): string
                 throw new RequestProblem(422, 'Choose a weight greater than zero.');
             }
             $weightDate = $date;
-            $sameDay = query($db, 'SELECT id FROM pl_entries WHERE user_id=? AND weight_date=?', [$userId, $date])->fetchColumn();
-            if ($sameDay && $existingId !== '' && $existingId !== $sameDay) {
+            $sameDay = query($db, 'SELECT id,payload FROM pl_entries WHERE user_id=? AND weight_date=?', [$userId, $date])->fetch();
+            if ($sameDay && $existingId !== '' && $existingId !== $sameDay['id']) {
                 throw new RequestProblem(409, 'A weight entry already exists for this date.');
             }
-            $existingId = $existingId !== '' ? $existingId : ($sameDay ?: '');
+            $existingId = $existingId !== '' ? $existingId : ($sameDay['id'] ?? '');
+            $stored = $existing ?: $sameDay;
+            $previous = $stored ? decode($stored['payload']) : [];
+            $readings = $previous['bf511'] ?? [];
+            if ($hasBf511) {
+                $readings = updateBf511($readings, $input['bf511']);
+            }
+            if ($readings !== []) {
+                $data['bf511'] = $readings;
+            }
+            if (!array_key_exists('note', $input) && isset($previous['note'])) {
+                $data['note'] = $previous['note'];
+            }
         }
 
         if ($existingId !== '') {
@@ -225,6 +282,9 @@ function adminAction(PDO $db, array $actor, string $action, array $input): void
             break;
         case 'weightMonitor':
             query($db, 'UPDATE pl_users SET weight_monitor=? WHERE id=?', [!empty($input['on']) ? 1 : 0, $target]);
+            break;
+        case 'advancedWeightMonitor':
+            query($db, 'UPDATE pl_users SET advanced_weight_monitor=? WHERE id=?', [!empty($input['on']) ? 1 : 0, $target]);
             break;
         case 'grantProduct':
             $product = textValue($input, 'product', 48);

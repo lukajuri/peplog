@@ -22,12 +22,20 @@ function reportSnapshot(PDO $db, array $user, string $kind, DateTimeImmutable $e
     $listed = entries($db, (int)$user['id'], $from, $to);
     $days = [];
     $weights = [];
+    $bf511Readings = [];
     $applications = [];
     $notes = [];
     foreach ($listed as $entry) {
         $days[$entry['date']] = true;
         if ($entry['type'] === 'weight') {
             $weights[] = ['date' => $entry['date'], 'kg' => $entry['amount']];
+            if (!empty($user['advanced_weight_monitor'])) {
+                foreach (BF511_METRICS as $name => $metric) {
+                    if (isset($entry['bf511'][$name])) {
+                        $bf511Readings[$name][] = ['date' => $entry['date'], 'value' => $entry['bf511'][$name]];
+                    }
+                }
+            }
         }
         if ($entry['type'] === 'application') {
             $applications[] = [
@@ -39,11 +47,20 @@ function reportSnapshot(PDO $db, array $user, string $kind, DateTimeImmutable $e
             $notes[] = ['date' => $entry['date'], 'time' => $entry['time'] ?? null, 'note' => $entry['note']];
         }
     }
+    $composition = [];
+    foreach ($bf511Readings as $name => $readings) {
+        $composition[$name] = [
+            'readings' => $readings,
+            'change' => count($readings) > 1
+                ? round($readings[count($readings) - 1]['value'] - $readings[0]['value'], BF511_METRICS[$name]['decimals'])
+                : null,
+        ];
+    }
     return [
         'period' => $kind, 'from' => $from, 'to' => $to, 'time_zone' => $user['timezone'], 'locale' => $user['locale'],
         'days_logged' => count($days), 'days_total' => $start->diff($end)->days + 1,
         'application_count' => count($applications), 'note_count' => count($notes), 'weight_count' => count($weights),
-        'weights' => $weights, 'applications' => $applications, 'notes' => $notes,
+        'weights' => $weights, 'bf511' => $composition, 'applications' => $applications, 'notes' => $notes,
     ];
 }
 
@@ -76,6 +93,36 @@ function reportTitle(string $kind): string
     return $kind === 'weekly' ? 'Weekly journal summary' : 'Monthly journal summary';
 }
 
+function reportBf511Text(array $composition, string $locale): string
+{
+    if (!$composition) {
+        return '';
+    }
+    $lines = [translate('BF511 readings', $locale)];
+    $decimal = $locale === 'en' ? '.' : ',';
+    foreach (BF511_METRICS as $name => $metric) {
+        $summary = $composition[$name] ?? null;
+        if (!$summary || !$summary['readings']) {
+            continue;
+        }
+        $readings = array_map(
+            fn(array $row): string => $row['date'] . ' · '
+                . number_format($row['value'], $metric['decimals'], $decimal, '') . $metric['unit'],
+            $summary['readings']
+        );
+        $lines[] = translate($metric['label'], $locale) . ' — ' . implode(' | ', $readings);
+        if ($summary['change'] !== null) {
+            $change = ($summary['change'] > 0 ? '+' : '')
+                . number_format($summary['change'], $metric['decimals'], $decimal, '');
+            if ($metric['unit'] === '%') {
+                $change .= ' ' . translate('percentage points', $locale);
+            }
+            $lines[] = translate('Recorded change', $locale) . ' · ' . $change;
+        }
+    }
+    return "\n\n" . implode("\n", $lines);
+}
+
 function reportBody(array $data, string $analysis, string $username): string
 {
     $locale = $data['locale'];
@@ -94,7 +141,8 @@ function reportBody(array $data, string $analysis, string $username): string
     }
     return translate('Account holder', $locale) . '  ' . $username . "\n"
         . $data['from'] . ' – ' . $data['to'] . ' (' . $data['time_zone'] . ")\n\n"
-        . $facts . "\n\n" . translate('AI analysis', $locale) . "\n" . $analysis . "\n";
+        . $facts . reportBf511Text($data['bf511'] ?? [], $locale)
+        . "\n\n" . translate('AI analysis', $locale) . "\n" . $analysis . "\n";
 }
 
 function processAnalysis(PDO $db, array $job): void

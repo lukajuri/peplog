@@ -54,6 +54,7 @@ try {
         case 'addUser':
         case 'setPin':
         case 'weightMonitor':
+        case 'advancedWeightMonitor':
         case 'grantProduct':
         case 'addProduct':
             adminAction($db, $user, $action, $input);

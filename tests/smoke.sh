@@ -11,6 +11,7 @@ trap cleanup EXIT
 mkdir "$temp/www"
 cp -R "$here/peplog" "$temp/www/peplog"
 cp -R "$here/peplog-private" "$temp/peplog-private"
+sed -i '/^    advanced_weight_monitor TINYINT NOT NULL DEFAULT 0,$/d' "$temp/peplog-private/schema.sql"
 php "$here/tests/fixture.php" > "$temp/peplog-private/config.php"
 PEPLOG_TEST_HTTP=1 php -S 127.0.0.1:18085 -t "$temp/www" > "$temp/server.log" 2>&1 &
 pid="$!"
@@ -49,6 +50,7 @@ grep -q 'name="member_pin"' "$temp/setup"
 curl -fsS -b "$admin" -c "$admin" --data-urlencode "csrf=$(form_token "$temp/setup")" \
     --data-urlencode 'admin_pin=64097521' --data-urlencode 'member_pin=57962318' "$base""setup.php" > "$temp/setup"
 grep -q 'Setup is complete' "$temp/setup"
+php "$here/tests/migrate-advanced-weight.php" "$temp/peplog-private"
 get "$admin" '' > "$temp/home"
 grep -q 'name="pin"' "$temp/home"
 grep -q 'cookie-notice' "$temp/home"
@@ -75,14 +77,32 @@ id="$(read_json "$temp/response" 'echo $d["id"];')"
 login "$member" cimember 57962318 "$temp/patient"
 member_token="$(main_token "$temp/patient")"
 get "$member" api.php > "$temp/state"
-read_json "$temp/state" 'if(count($d["accounts"])!==1 || !$d["accounts"][0]["weightMonitor"] || count($d["products"])!==1 || $d["accounts"][0]["entries"]!==[]) exit(1);'
+read_json "$temp/state" 'if(count($d["accounts"])!==1 || !$d["accounts"][0]["weightMonitor"] || $d["accounts"][0]["advancedWeightMonitor"] || count($d["products"])!==1 || $d["accounts"][0]["entries"]!==[]) exit(1);'
 expect 403 "$(send "$member" "$member_token" "{\"action\":\"weightMonitor\",\"target\":$member_id,\"on\":false}")"
 expect 404 "$(send "$member" "$member_token" "{\"action\":\"saveEntry\",\"id\":\"$id\",\"type\":\"note\",\"date\":\"2020-01-01\",\"note\":\"Fixture\"}")"
 expect 422 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"application","date":"2020-01-01","time":"08:00","productId":"ret-pen","amount":null}')"
 expect 200 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"application","date":"2020-01-01","time":"08:00","productId":"bpc-pen","amount":null}')"
 expect 200 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.37}')"
+weight_id="$(read_json "$temp/response" 'echo $d["id"];')"
+expect 403 "$(send "$member" "$member_token" "{\"action\":\"advancedWeightMonitor\",\"target\":$member_id,\"on\":true}")"
+expect 403 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.37,"bf511":{"bodyFat":22.1}}')"
+expect 200 "$(send "$admin" "$token" "{\"action\":\"advancedWeightMonitor\",\"target\":$member_id,\"on\":true}")"
+expect 200 "$(send "$admin" "$token" "{\"action\":\"weightMonitor\",\"target\":$member_id,\"on\":false}")"
+expect 422 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.37,"bf511":{"visceralFatLevel":5.5}}')"
+expect 422 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.37,"bf511":{"skeletalMuscle":60}}')"
+expect 422 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.37,"bf511":{"bodyFat":22.15}}')"
+expect 200 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.37,"bf511":{"bodyFat":22.1,"visceralFatLevel":8}}')"
+test "$(read_json "$temp/response" 'echo $d["id"];')" = "$weight_id"
 expect 200 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.41}')"
-read_json "$temp/response" 'if(count($d["state"]["accounts"][0]["entries"])!==2) exit(1);'
+read_json "$temp/response" '$u=$d["state"]["accounts"][0]; $w=array_values(array_filter($u["entries"],fn($e)=>$e["type"]==="weight"))[0]; if(count($u["entries"])!==2 || $u["weightMonitor"] || !$u["advancedWeightMonitor"] || $w["amount"]!==75.41 || $w["bf511"]!==["bodyFat"=>22.1,"visceralFatLevel"=>8]) exit(1);'
+expect 200 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.41,"bf511":{"bodyFat":null,"skeletalMuscle":34.7}}')"
+read_json "$temp/response" 'foreach($d["state"]["accounts"][0]["entries"] as $w) if($w["type"]==="weight" && (isset($w["bf511"]["bodyFat"]) || $w["bf511"]["skeletalMuscle"]!==34.7 || $w["bf511"]["visceralFatLevel"]!==8)) exit(1);'
+expect 200 "$(send "$admin" "$token" "{\"action\":\"advancedWeightMonitor\",\"target\":$member_id,\"on\":false}")"
+expect 200 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"weight","date":"2020-01-01","amount":75.42}')"
+read_json "$temp/response" 'foreach($d["state"]["accounts"][0]["entries"] as $w) if(isset($w["bf511"])) exit(1);'
+expect 200 "$(send "$admin" "$token" "{\"action\":\"advancedWeightMonitor\",\"target\":$member_id,\"on\":true}")"
+get "$member" api.php > "$temp/state"
+read_json "$temp/state" 'foreach($d["accounts"][0]["entries"] as $w) if($w["type"]==="weight" && ($w["bf511"]["skeletalMuscle"]!==34.7 || $w["bf511"]["visceralFatLevel"]!==8)) exit(1);'
 expect 200 "$(send "$admin" "$token" "{\"action\":\"setPin\",\"target\":$member_id,\"pin\":\"68120539\"}")"
 expect 401 "$(curl -sS -b "$member" -o "$temp/response" -w '%{http_code}' "$base""api.php")"
 php "$temp/peplog-private/bin/reports.php" --check

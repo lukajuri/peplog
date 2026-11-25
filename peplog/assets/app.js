@@ -25,13 +25,14 @@ let accounts=Object.create(null);
 let locales={};
 let dictionary={};
 let reportRecipient='';
+let bf511Metrics={};
 let recording=null;
 const reportCache=new Map();
 const token=document.querySelector('#journal-auth').dataset.token;
 let pendingWrite=Promise.resolve();
 const state = {
   user:'', lang:'en', page:'calendar', selected:'', month:'',
-  adminSection:'users', catalogUser:'', catalogRoute:'pen', entry:null,
+  adminSection:'users', catalogUser:'', catalogRoute:'pen', entry:null, weightMetric:'weight',
   reportOffsets:{ weekly:0, monthly:0 }
 };
 
@@ -91,8 +92,11 @@ const typeLabel = { note:'Observation', application:'Application', weight:'Weigh
 const pageInfo = {
   calendar:['Calendar','calendar'], weekly:['Weekly summary','chart','Weekly'],
   monthly:['Monthly summary','monthly','Monthly'], settings:['Settings','settings'],
-  weight:['Weight monitoring','weight','Weight'], admin:['Admin','shield']
+  weight:['Weight monitoring','weight','Weight'], advancedWeight:['Advanced Weight Monitoring','chart','BF511'],
+  admin:['Admin','shield']
 };
+const pagePermissions={admin:'admin',weight:'weightMonitor',advancedWeight:'advancedWeightMonitor'};
+const canOpenPage=page=>!pagePermissions[page]||account()[pagePermissions[page]];
 const button = (text, action, {glyph='', variant='', attrs=''}={})=>
   `<button type="button" class="button ${variant ? 'button-'+variant : ''}" data-action="${action}" ${attrs}>${glyph?icon(glyph):''}${label(text)}</button>`;
 const iconButton = (text, action, glyph, attrs='')=>
@@ -107,7 +111,7 @@ function languageOptions(current) {
   return Object.entries(locales).map(([value,name])=>option(value,name,current===value)).join('');
 }
 function nav() {
-  return Object.entries(pageInfo).filter(([page])=>(page!=='admin'||account().admin)&&(page!=='weight'||account().weightMonitor)).map(([page,[title,glyph,compact=title]])=>
+  return Object.entries(pageInfo).filter(([page])=>canOpenPage(page)).map(([page,[title,glyph,compact=title]])=>
     `<button class="nav-item" type="button" data-action="page" data-value="${page}" aria-label="${label(title)}" ${state.page===page?'aria-current="page"':''}>${icon(glyph)}<span class="nav-full">${label(title)}</span><span class="nav-compact">${label(compact)}</span></button>`
   ).join('');
 }
@@ -141,7 +145,8 @@ function render() {
 function renderMain() {
   const views={
     calendar:renderCalendar, weekly:()=>renderReport('weekly'), monthly:()=>renderReport('monthly'),
-    settings:()=>pageHeader('Settings','')+renderPreferences(), weight:renderWeightMonitoring, admin:renderAdmin
+    settings:()=>pageHeader('Settings','')+renderPreferences(), weight:renderWeightMonitoring,
+    advancedWeight:renderAdvancedWeightMonitoring, admin:renderAdmin
   };
   q('#content').innerHTML=views[state.page]();
 }
@@ -152,8 +157,7 @@ function setDate(date, focus=false) {
   if (focus) q(`[data-action="date"][data-value="${date}"]`)?.focus({preventScroll:true});
 }
 function gotoPage(page) {
-  if (page==='admin'&&!account().admin) return;
-  if (page==='weight'&&!account().weightMonitor) return;
+  if (!canOpenPage(page)) return;
   state.page=page;
   render();
   q('#content').focus({preventScroll:true});
@@ -252,8 +256,11 @@ function renderReminder() {
 }
 
 
+function weightEntries() {
+  return account().entries.filter(entry=>entry.type==='weight').sort((a,b)=>a.date.localeCompare(b.date));
+}
 function renderWeightMonitoring() {
-  const measurements=account().entries.filter(entry=>entry.type==='weight').sort((a,b)=>a.date.localeCompare(b.date));
+  const measurements=weightEntries();
   const heading=pageHeader('Weight monitoring','',button('Log weight','weight',{glyph:'plus',variant:'primary',attrs:'data-today="true"'}));
   if (measurements.length===0) {
     return heading+`<section class="card panel"><p class="muted">${label('Log a weight to start your chart.')}</p></section>`;
@@ -278,7 +285,38 @@ function renderWeightMonitoring() {
     </details>
   </section>`;
 }
-function weightChart(entries) {
+function bf511Value(amount, metric) {
+  return num(amount,{minimumFractionDigits:metric.decimals,maximumFractionDigits:metric.decimals})+metric.unit;
+}
+function renderAdvancedWeightMonitoring() {
+  const measurements=weightEntries();
+  const heading=pageHeader('Advanced Weight Monitoring','OMRON BF511',button('Log BF511 readings','log-bf511',{glyph:'plus',variant:'primary'}));
+  if (!measurements.length) {
+    return heading+`<section class="card panel"><p class="muted">${label('Log a weight to start your chart.')}</p></section>`;
+  }
+  const metrics=Object.entries(bf511Metrics);
+  const metric=bf511Metrics[state.weightMetric];
+  const points=metric?measurements.filter(entry=>entry.bf511?.[state.weightMetric]!=null)
+    .map(entry=>({date:entry.date,amount:entry.bf511[state.weightMetric]})):measurements;
+  const rows=measurements.slice().reverse().map(entry=>`<tr>
+    <th scope="row"><time datetime="${h(entry.date)}">${h(formatDay(entry.date,{year:'numeric',month:'short',day:'numeric'}))}</time></th>
+    <td>${h(amountText(entry))}</td>${metrics.map(([key,details])=>
+      `<td>${entry.bf511?.[key]==null?'–':h(bf511Value(entry.bf511[key],details))}</td>`).join('')}
+    <td>${iconButton('Edit entry','edit-bf511','edit',`data-value="${h(entry.id)}"`)}</td>
+  </tr>`).join('');
+  return heading+`<section class="card panel weight-panel">
+    ${tabs([['weight','Weight'],...metrics.map(([name,details])=>[name,details.label])],state.weightMetric,'weight-metric')}
+    ${points.length?weightChart(points,metric):`<p class="muted">${label('No BF511 readings for this metric yet.')}</p>`}
+    <h2 id="composition-history-title">${label('Weigh-in history')}</h2>
+    <div class="composition-table" role="region" aria-labelledby="composition-history-title" tabindex="0">
+      <table class="catalog"><thead><tr><th scope="col">${label('Date')}</th><th scope="col">${label('Weight')}</th>
+        ${metrics.map(([,details])=>`<th scope="col">${label(details.label)}</th>`).join('')}
+        <th scope="col"><span class="sr-only">${label('Edit entry')}</span></th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>
+  </section>`;
+}
+function weightChart(entries, metric=null) {
   const first=entries[0].date;
   const last=entries.at(-1).date;
   const span=ageInDays(first,last);
@@ -286,18 +324,20 @@ function weightChart(entries) {
   const ymin=Math.min(...amounts);
   const ymax=Math.max(...amounts);
   const padding=Math.max(.5,(ymax-ymin)*.16);
-  const low=Math.max(0,ymin-padding);
-  const high=ymax+padding;
+  const integerTicks=metric?.decimals===0;
+  const low=integerTicks?Math.max(metric.min,Math.floor(ymin-padding)):Math.max(0,ymin-padding);
+  const high=integerTicks?Math.min(metric.max,Math.ceil(ymax+padding)):ymax+padding;
   const x=day=>67+(span?ageInDays(first,day)/span*650:325);
   const y=amount=>18+201*(high-amount)/(high-low);
   const levels=Array.from({length:5},(_,i)=>low+(high-low)*i/4);
-  const grid=levels.map(level=>`<line x1="67" x2="717" y1="${y(level)}" y2="${y(level)}"></line>
+  const ticks=integerTicks?[...new Set(levels.map(Math.round))]:levels;
+  const grid=ticks.map(level=>`<line x1="67" x2="717" y1="${y(level)}" y2="${y(level)}"></line>
     <text x="57" y="${y(level)+4}" text-anchor="end">${h(num(level,{maximumFractionDigits:2}))}</text>`).join('');
   const path=entries.map(entry=>`${x(entry.date)},${y(entry.amount)}`).join(' ');
   const dots=entries.map(entry=>`<circle cx="${x(entry.date)}" cy="${y(entry.amount)}" r="4">
-    <title>${h(shortDate(entry.date)+' · '+amountText(entry))}</title></circle>`).join('');
+    <title>${h(shortDate(entry.date)+' · '+(metric?bf511Value(entry.amount,metric):amountText(entry)))}</title></circle>`).join('');
   const dates=span?[first,last]:[first];
-  return `<svg class="weight-chart" role="img" aria-label="${label('Weight over time')}" viewBox="0 0 745 250">
+  return `<svg class="weight-chart" role="img" aria-label="${label(metric?.label??'Weight over time')}" viewBox="0 0 745 250">
     <g class="chart-grid">${grid}</g>
     <polyline points="${path}" class="chart-line"></polyline>
     <g class="chart-dots">${dots}</g>
@@ -377,6 +417,20 @@ function reportNotes(data) {
   return `<ul class="list-clean">${data.notes.map(note=>`<li class="week-note">
     <time datetime="${note.date}">${h(shortDate(note.date))}</time><p>${h(note.note)}</p></li>`).join('')}</ul>`;
 }
+function reportBf511(composition) {
+  const metrics=Object.entries(bf511Metrics).filter(([name])=>composition?.[name]?.readings?.length);
+  if (!metrics.length) return '';
+  return `<section class="report-composition"><h3>${label('BF511 readings')}</h3>
+    ${metrics.map(([name,metric])=>{
+      const {readings,change}=composition[name];
+      const dates=readings.map(row=>shortDate(row.date)+' · '+bf511Value(row.value,metric));
+      const delta=change==null?'':num(change,{signDisplay:'exceptZero',maximumFractionDigits:metric.decimals})
+        +(metric.unit==='%'?' '+t('percentage points'):'');
+      return `<div><strong>${label(metric.label)}</strong><p>${h(dates.join(' | '))}</p>
+        ${delta?`<p class="muted small">${label('Recorded change')} · ${h(delta)}</p>`:''}</div>`;
+    }).join('')}
+  </section>`;
+}
 function renderReport(kind) {
   const data=reportData(kind);
   const stored=reportCache.get(kind+':'+data.range.to);
@@ -392,6 +446,7 @@ function renderReport(kind) {
         <div class="stat"><strong>${data.weights.length}</strong><span>${label('Weight entries')}</span></div>
       </div>
       <h3>${label('Recorded observations')}</h3>${reportNotes(data)}
+      ${reportBf511(stored?.data?.bf511)}
     </section><section class="card panel"><h2>${label('Delivery')}</h2>
       <dl class="delivery-list"><dt>${label('Recipient')}</dt><dd>${h(reportRecipient)}</dd>
         <dt>${label('Schedule')}</dt><dd>${label(schedule)}</dd>
@@ -457,6 +512,8 @@ function renderAdminUsers(methodTabs) {
       <div class="weight-access">
         <label class="checkbox-row"><input type="checkbox" data-weight-monitor="${selected.id}" ${selected.weightMonitor?'checked':''}>
           <span>${label('Enable weight monitoring')}</span></label>
+        <label class="checkbox-row"><input type="checkbox" data-advanced-weight-monitor="${selected.id}" ${selected.advancedWeightMonitor?'checked':''}>
+          <span>${label('Enable advanced weight monitoring')}</span></label>
       </div>
       <div class="user-products"><h3>${label('Available products')}</h3>
         <p class="muted small">${label('Select the products this user can log.')}</p>
@@ -624,16 +681,18 @@ async function saveEntry(form) {
   setDate(date);
   notify('Entry saved');
 }
-function openWeight(existing=null, today=false) {
-  state.entry={type:'weight',existing};
+function openWeight(existing=null, today=false, advanced=false) {
+  if (advanced&&!account().advancedWeightMonitor) return;
   const current=localClock().date;
   const date=existing?.date??(today?current:selectDateForEntry());
+  const saved=existing??(advanced?weightEntries().find(entry=>entry.date===date):undefined);
+  state.entry={type:'weight',existing,advanced,originalReadings:saved?.bf511??{}};
   const previous=latestWeight();
-  const amount=Math.round((existing?.amount??previous?.amount??0)*100);
+  const amount=Math.round((saved?.amount??previous?.amount??0)*100);
   const whole=Math.floor(amount/100);
   const decimal=amount%100;
   const separator=new Intl.NumberFormat(state.lang).formatToParts(0.1).find(part=>part.type==='decimal').value;
-  showDialog(existing?'Edit entry':'Log weight',longDate(date),`<form id="weight-form" class="form-stack">
+  showDialog(existing?'Edit entry':advanced?'Log BF511 readings':'Log weight',longDate(date),`<form id="weight-form" class="form-stack">
     ${field('Date',`<input type="date" name="date" value="${date}" required max="${current}">`)}
     <fieldset class="weight-picker">
       <legend>${label('Weight (kg)')}</legend>
@@ -642,6 +701,13 @@ function openWeight(existing=null, today=false) {
         ${weightWheel('Decimals','decimal',99,decimal)}</div>
       <p class="help">${label('Scroll or use the arrow keys to change each value.')}</p>
     </fieldset>
+    ${advanced?`<fieldset class="bf511-fields">
+      <legend>${label('BF511 readings')}</legend>
+      <p class="help">${label('Copy the readings shown on the scale. Leave unavailable readings blank.')}</p>
+      <div class="form-grid">${Object.entries(bf511Metrics).map(([name,metric])=>
+        field(metric.label,decimalInput(name,saved?.bf511?.[name],false),num(metric.min)+'–'+num(metric.max))
+      ).join('')}</div>
+    </fieldset>`:''}
     ${info(t('Weigh in the morning, after emptying your bladder and before eating or drinking, without clothes or in light underwear.'))}
     <p class="error" role="alert" id="weight-error" hidden></p>
     ${formFooter('Save entry',!!existing)}
@@ -649,6 +715,17 @@ function openWeight(existing=null, today=false) {
   for (const wheel of dialog.querySelectorAll('[data-wheel]')) {
     setWheel(wheel,Number(wheel.getAttribute('aria-valuenow')));
     wheel.addEventListener('scroll',()=>updateWheel(wheel),{passive:true});
+  }
+}
+function loadBf511Date(form) {
+  const saved=weightEntries().find(entry=>entry.date===form.elements.date.value);
+  state.entry.originalReadings=saved?.bf511??{};
+  const weight=Math.round((saved?.amount??latestWeight()?.amount??0)*100);
+  setWheel(q('[data-wheel="whole"]',form),Math.floor(weight/100));
+  setWheel(q('[data-wheel="decimal"]',form),weight%100);
+  for (const [name,metric] of Object.entries(bf511Metrics)) {
+    const value=saved?.bf511?.[name];
+    form.elements[name].value=value==null?'':num(value,{maximumFractionDigits:metric.decimals,useGrouping:false});
   }
 }
 function latestWeight() {
@@ -692,7 +769,20 @@ async function saveWeight(form) {
   const amount=(100*selected('whole')+selected('decimal'))/100;
   if (!amount) throw new Error('Choose a weight greater than zero.');
   const date=form.elements.date.value;
-  await write('saveEntry',{id:state.entry.existing?.id??'',type:'weight',date,amount});
+  const data={id:state.entry.existing?.id??'',type:'weight',date,amount};
+  if (state.entry.advanced) {
+    const edits={};
+    for (const [name,metric] of Object.entries(bf511Metrics)) {
+      const raw=form.elements[name].value.trim();
+      const value=raw===''?null:positiveDecimal(raw);
+      if (raw!==''&&(value==null||value<metric.min||value>metric.max||Number(value.toFixed(metric.decimals))!==value)) {
+        throw new Error('Check the BF511 reading ranges and decimal places.');
+      }
+      if (value!==(state.entry.originalReadings[name]??null)) edits[name]=value;
+    }
+    if (Object.keys(edits).length) data.bf511=edits;
+  }
+  await write('saveEntry',data);
   closeDialog();
   setDate(date);
   notify('Weigh-in saved');
@@ -788,6 +878,7 @@ function showEmail() {
       <dt>${label('Account holder')}</dt><dd>${h(account().display)}</dd>
     </dl>
     ${reportAnalysis(data).map(line=>`<p>${h(line)}</p>`).join('')}
+    ${reportBf511(stored?.data?.bf511)}
     ${stored?.analysis?`<p class="analysis-text">${h(stored.analysis)}</p>`:''}
     <div>${button('Back to summary','close',{variant:'primary'})}</div>
   </div>`);
@@ -936,6 +1027,16 @@ const actions={
   new:()=>openEntry(),
   note:()=>openEntry('note'),
   weight:control=>openWeight(null,control.dataset.today==='true'),
+  'log-bf511':()=>openWeight(null,true,true),
+  'edit-bf511':control=>{
+    const entry=account().entries.find(record=>record.id===control.dataset.value&&record.type==='weight');
+    if (entry) openWeight(entry,false,true);
+  },
+  'weight-metric':control=>{
+    state.weightMetric=control.dataset.value;
+    renderMain();
+    q(`[data-action="weight-metric"][data-value="${CSS.escape(state.weightMetric)}"]`)?.focus({preventScroll:true});
+  },
   edit:control=>{
     const entry=account().entries.find(record=>record.id===control.dataset.value);
     if (entry?.type==='weight') openWeight(entry);
@@ -1008,6 +1109,13 @@ document.addEventListener('change',async event=>{
     if (field.dataset.weightMonitor&&account().admin&&state.page==='admin') {
       await write('weightMonitor',{target:Number(field.dataset.weightMonitor),on:field.checked});
       renderShell();
+    }
+    if (field.dataset.advancedWeightMonitor&&account().admin&&state.page==='admin') {
+      await write('advancedWeightMonitor',{target:Number(field.dataset.advancedWeightMonitor),on:field.checked});
+      renderShell();
+    }
+    if (field.name==='date'&&field.form?.id==='weight-form'&&state.entry.advanced&&!state.entry.existing&&field.validity.valid) {
+      loadBf511Date(field.form);
     }
     if (field.id==='entry-product') {
       state.entry.productId=field.value;
@@ -1129,6 +1237,7 @@ async function start() {
     locales=data.locales;
     dictionary=data.messages;
     reportRecipient=data.reportRecipient;
+    bf511Metrics=data.bf511Metrics??{};
     applyServerState(data);
     state.selected=today();
     state.month=state.selected.slice(0,7);

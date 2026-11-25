@@ -213,7 +213,19 @@
     "sleep": "sonno",
     "energy": "energia",
     "activity": "attività",
-    "appetite": "appetito"
+    "appetite": "appetito",
+    "Advanced Weight Monitoring": "Monitoraggio avanzato del peso",
+    "Enable advanced weight monitoring": "Attiva il monitoraggio avanzato del peso",
+    "Body fat (%)": "Grasso corporeo (%)",
+    "Skeletal muscle (%)": "Muscolo scheletrico (%)",
+    "Visceral fat level": "Livello di grasso viscerale",
+    "Log BF511 readings": "Registra letture BF511",
+    "No BF511 readings for this metric yet.": "Ancora nessuna lettura BF511 per questo parametro.",
+    "Weigh-in history": "Storico delle pesate",
+    "BF511 readings": "Letture BF511",
+    "percentage points": "punti percentuali",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Copia i valori sul display della bilancia. Lascia vuoti i campi senza lettura.",
+    "Check the BF511 reading ranges and decimal places.": "Controlla gli intervalli e le cifre decimali delle letture BF511."
   },
   "ru": {
     "A weight entry already exists for this date.": "На эту дату уже записан вес.",
@@ -429,7 +441,19 @@
     "sleep": "сон",
     "energy": "энергия",
     "activity": "активность",
-    "appetite": "аппетит"
+    "appetite": "аппетит",
+    "Advanced Weight Monitoring": "Расширенное отслеживание веса",
+    "Enable advanced weight monitoring": "Включить расширенное отслеживание веса",
+    "Body fat (%)": "Жировая масса (%)",
+    "Skeletal muscle (%)": "Скелетные мышцы (%)",
+    "Visceral fat level": "Уровень висцерального жира",
+    "Log BF511 readings": "Записать показания BF511",
+    "No BF511 readings for this metric yet.": "Для этого показателя ещё нет данных BF511.",
+    "Weigh-in history": "История взвешиваний",
+    "BF511 readings": "Показания BF511",
+    "percentage points": "процентных пункта",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Перепишите показания с дисплея весов. Оставьте поля без данных пустыми.",
+    "Check the BF511 reading ranges and decimal places.": "Проверьте диапазоны и число знаков после запятой в показаниях BF511."
   },
   "uk": {
     "A weight entry already exists for this date.": "На цю дату вже записано вагу.",
@@ -645,7 +669,19 @@
     "sleep": "сон",
     "energy": "енергія",
     "activity": "активність",
-    "appetite": "апетит"
+    "appetite": "апетит",
+    "Advanced Weight Monitoring": "Розширене відстеження ваги",
+    "Enable advanced weight monitoring": "Увімкнути розширене відстеження ваги",
+    "Body fat (%)": "Жирова маса (%)",
+    "Skeletal muscle (%)": "Скелетні м’язи (%)",
+    "Visceral fat level": "Рівень вісцерального жиру",
+    "Log BF511 readings": "Записати показники BF511",
+    "No BF511 readings for this metric yet.": "Для цього показника ще немає даних BF511.",
+    "Weigh-in history": "Історія зважувань",
+    "BF511 readings": "Показники BF511",
+    "percentage points": "відсоткових пунктів",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Перепишіть показники з дисплея ваг. Поля без даних залиште порожніми.",
+    "Check the BF511 reading ranges and decimal places.": "Перевірте діапазони та кількість десяткових знаків показників BF511."
   },
   "de": {
     "A weight entry already exists for this date.": "Für dieses Datum gibt es bereits einen Gewichtseintrag.",
@@ -861,7 +897,19 @@
     "sleep": "Schlaf",
     "energy": "Energie",
     "activity": "Aktivität",
-    "appetite": "Appetit"
+    "appetite": "Appetit",
+    "Advanced Weight Monitoring": "Erweiterte Gewichtskontrolle",
+    "Enable advanced weight monitoring": "Erweiterte Gewichtskontrolle aktivieren",
+    "Body fat (%)": "Körperfett (%)",
+    "Skeletal muscle (%)": "Skelettmuskulatur (%)",
+    "Visceral fat level": "Viszeralfettstufe",
+    "Log BF511 readings": "BF511-Werte erfassen",
+    "No BF511 readings for this metric yet.": "Für diesen Messwert liegen noch keine BF511-Daten vor.",
+    "Weigh-in history": "Bisherige Messungen",
+    "BF511 readings": "BF511-Messwerte",
+    "percentage points": "Prozentpunkte",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Übertragen Sie die angezeigten Messwerte. Lassen Sie fehlende Werte frei.",
+    "Check the BF511 reading ranges and decimal places.": "Prüfen Sie Wertebereiche und Nachkommastellen der BF511-Messwerte."
   },
   "es": {
     "A weight entry already exists for this date.": "Ya hay un registro de peso para esta fecha.",
@@ -1077,7 +1125,19 @@
     "sleep": "sueño",
     "energy": "energía",
     "activity": "actividad",
-    "appetite": "apetito"
+    "appetite": "apetito",
+    "Advanced Weight Monitoring": "Seguimiento avanzado del peso",
+    "Enable advanced weight monitoring": "Activar seguimiento avanzado del peso",
+    "Body fat (%)": "Grasa corporal (%)",
+    "Skeletal muscle (%)": "Músculo esquelético (%)",
+    "Visceral fat level": "Nivel de grasa visceral",
+    "Log BF511 readings": "Registrar lecturas BF511",
+    "No BF511 readings for this metric yet.": "Todavía no hay lecturas BF511 para esta métrica.",
+    "Weigh-in history": "Historial de pesajes",
+    "BF511 readings": "Lecturas BF511",
+    "percentage points": "puntos porcentuales",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Copia los valores de la báscula. Deja en blanco las lecturas que falten.",
+    "Check the BF511 reading ranges and decimal places.": "Comprueba los rangos y los decimales de las lecturas BF511."
   },
   "fr": {
     "A weight entry already exists for this date.": "Un poids est déjà enregistré pour cette date.",
@@ -1293,7 +1353,19 @@
     "sleep": "sommeil",
     "energy": "énergie",
     "activity": "activité",
-    "appetite": "appétit"
+    "appetite": "appétit",
+    "Advanced Weight Monitoring": "Suivi avancé du poids",
+    "Enable advanced weight monitoring": "Activer le suivi avancé du poids",
+    "Body fat (%)": "Masse grasse (%)",
+    "Skeletal muscle (%)": "Muscle squelettique (%)",
+    "Visceral fat level": "Niveau de graisse viscérale",
+    "Log BF511 readings": "Enregistrer les relevés BF511",
+    "No BF511 readings for this metric yet.": "Aucun relevé BF511 pour cet indicateur pour le moment.",
+    "Weigh-in history": "Historique des pesées",
+    "BF511 readings": "Relevés BF511",
+    "percentage points": "points de pourcentage",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Recopiez les valeurs affichées par la balance. Laissez vides les champs sans relevé.",
+    "Check the BF511 reading ranges and decimal places.": "Vérifiez les plages et le nombre de décimales des relevés BF511."
   },
   "sr-Latn": {
     "A weight entry already exists for this date.": "Za ovaj datum već postoji unos težine.",
@@ -1509,7 +1581,19 @@
     "sleep": "san",
     "energy": "energija",
     "activity": "aktivnost",
-    "appetite": "apetit"
+    "appetite": "apetit",
+    "Advanced Weight Monitoring": "Napredno praćenje težine",
+    "Enable advanced weight monitoring": "Uključi napredno praćenje težine",
+    "Body fat (%)": "Telesna mast (%)",
+    "Skeletal muscle (%)": "Skeletni mišići (%)",
+    "Visceral fat level": "Nivo visceralne masti",
+    "Log BF511 readings": "Unesi očitavanja BF511",
+    "No BF511 readings for this metric yet.": "Još nema očitavanja BF511 za ovaj parametar.",
+    "Weigh-in history": "Istorija merenja težine",
+    "BF511 readings": "Očitavanja BF511",
+    "percentage points": "procentnih poena",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Prepišite vrednosti sa vage. Polja bez očitavanja ostavite prazna.",
+    "Check the BF511 reading ranges and decimal places.": "Proverite raspone i decimalna mesta očitavanja BF511."
   },
   "hr": {
     "A weight entry already exists for this date.": "Za ovaj datum već postoji unos težine.",
@@ -1725,7 +1809,19 @@
     "sleep": "san",
     "energy": "energija",
     "activity": "aktivnost",
-    "appetite": "apetit"
+    "appetite": "apetit",
+    "Advanced Weight Monitoring": "Napredno praćenje težine",
+    "Enable advanced weight monitoring": "Uključi napredno praćenje težine",
+    "Body fat (%)": "Tjelesna mast (%)",
+    "Skeletal muscle (%)": "Skeletni mišići (%)",
+    "Visceral fat level": "Razina visceralne masti",
+    "Log BF511 readings": "Unesi očitanja BF511",
+    "No BF511 readings for this metric yet.": "Još nema očitanja BF511 za ovaj pokazatelj.",
+    "Weigh-in history": "Povijest vaganja",
+    "BF511 readings": "Očitanja BF511",
+    "percentage points": "postotnih bodova",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Prepišite vrijednosti s vage. Polja bez očitanja ostavite prazna.",
+    "Check the BF511 reading ranges and decimal places.": "Provjerite raspone i decimalna mjesta očitanja BF511."
   },
   "sl": {
     "A weight entry already exists for this date.": "Za ta datum je teža že vnesena.",
@@ -1941,6 +2037,18 @@
     "sleep": "spanje",
     "energy": "energija",
     "activity": "telesna dejavnost",
-    "appetite": "apetit"
+    "appetite": "apetit",
+    "Advanced Weight Monitoring": "Napredno spremljanje teže",
+    "Enable advanced weight monitoring": "Omogoči napredno spremljanje teže",
+    "Body fat (%)": "Telesna maščoba (%)",
+    "Skeletal muscle (%)": "Skeletne mišice (%)",
+    "Visceral fat level": "Stopnja visceralne maščobe",
+    "Log BF511 readings": "Vnesi meritve BF511",
+    "No BF511 readings for this metric yet.": "Za ta parameter še ni meritev BF511.",
+    "Weigh-in history": "Zgodovina tehtanj",
+    "BF511 readings": "Meritve BF511",
+    "percentage points": "odstotne točke",
+    "Copy the readings shown on the scale. Leave unavailable readings blank.": "Prepiši prikazane vrednosti s tehtnice. Polja brez meritev pusti prazna.",
+    "Check the BF511 reading ranges and decimal places.": "Preveri razpone in decimalna mesta meritev BF511."
   }
 }
