@@ -1,0 +1,4 @@
+/peplog-private/config.php
+/peplog-private/*.lock
+/peplog-private/*.log
+*.zip

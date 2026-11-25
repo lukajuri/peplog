@@ -1,0 +1,67 @@
+CREATE TABLE IF NOT EXISTS pl_users (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(24) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL UNIQUE,
+    pin_hash VARCHAR(255) NOT NULL,
+    is_admin TINYINT NOT NULL DEFAULT 0,
+    locale VARCHAR(12) NOT NULL DEFAULT 'en',
+    timezone VARCHAR(64) NOT NULL DEFAULT 'Europe/Ljubljana',
+    theme VARCHAR(8) NOT NULL DEFAULT 'light',
+    weigh_reminder TINYINT NOT NULL DEFAULT 1,
+    weight_monitor TINYINT NOT NULL DEFAULT 0,
+    auth_version INT UNSIGNED NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pl_products (
+    id VARCHAR(48) CHARACTER SET ascii NOT NULL PRIMARY KEY,
+    name VARCHAR(90) NOT NULL,
+    route VARCHAR(10) CHARACTER SET ascii NOT NULL,
+    label VARCHAR(50) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pl_user_products (
+    user_id INT UNSIGNED NOT NULL,
+    product_id VARCHAR(48) CHARACTER SET ascii NOT NULL,
+    PRIMARY KEY (user_id, product_id),
+    FOREIGN KEY (user_id) REFERENCES pl_users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES pl_products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pl_entries (
+    id CHAR(24) CHARACTER SET ascii NOT NULL PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    entry_date DATE NOT NULL,
+    entry_time TIME NULL,
+    weight_date DATE NULL,
+    payload MEDIUMTEXT NOT NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    UNIQUE (user_id, weight_date),
+    INDEX (user_id, entry_date),
+    FOREIGN KEY (user_id) REFERENCES pl_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pl_login_limits (
+    bucket CHAR(64) CHARACTER SET ascii NOT NULL PRIMARY KEY,
+    attempts INT UNSIGNED NOT NULL,
+    expires_at INT UNSIGNED NOT NULL,
+    INDEX (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pl_reports (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    kind VARCHAR(10) CHARACTER SET ascii NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    payload MEDIUMTEXT NOT NULL,
+    ai_text TEXT NULL,
+    ai_attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    next_ai_at DATETIME NULL,
+    mail_state VARCHAR(12) CHARACTER SET ascii NOT NULL DEFAULT 'pending',
+    mail_attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    next_mail_at DATETIME NULL,
+    sent_at DATETIME NULL,
+    UNIQUE (user_id, kind, period_end),
+    FOREIGN KEY (user_id) REFERENCES pl_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

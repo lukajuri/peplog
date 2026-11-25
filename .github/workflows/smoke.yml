@@ -1,0 +1,40 @@
+name: PHP and MySQL smoke checks
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: ci-root-fixture
+          MARIADB_DATABASE: peplog_check
+          MARIADB_USER: peplog_check
+          MARIADB_PASSWORD: ci-database-fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_mysql, curl, mbstring, openssl, fileinfo
+          coverage: none
+      - name: Check PHP and JavaScript syntax
+        run: |
+          find peplog peplog-private -name '*.php' -print0 | xargs -0 -n 1 php -l
+          node --check peplog/assets/app.js
+          node --check peplog/assets/login.js
+      - name: Check setup, authentication, journal and report scheduling
+        run: bash tests/smoke.sh
