@@ -26,7 +26,7 @@ main_token() { sed -En 's/.*data-token="([a-f0-9]+)".*/\1/p' "$1" | head -1; }
 get() { curl -fsS -b "$1" -c "$1" "$base$2"; }
 send() {
     local jar="$1" csrf="$2" json="$3"
-    curl -sS -b "$jar" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+    curl -sS -b "$jar" -c "$jar" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
         -d "$json" --output "$temp/response" --write-out '%{http_code}' "$base""api.php"
 }
 expect() {
@@ -116,6 +116,32 @@ expect 200 "$(send "$admin" "$token" "{\"action\":\"advancedWeightMonitor\",\"ta
 monitoring_modes false true
 get "$member" api.php > "$temp/state"
 read_json "$temp/state" 'foreach($d["accounts"][0]["entries"] as $w) if($w["type"]==="weight" && ($w["amount"]!==75.42 || $w["bf511"]["skeletalMuscle"]!==34.7 || $w["bf511"]["visceralFatLevel"]!==8)) exit(1);'
+other_session="$temp/other-session.cookies"
+login "$other_session" cimember 57962318 "$temp/other-session"
+cp "$member" "$temp/old-session.cookies"
+change_pin='{"action":"changePin","currentPin":"57962318","pin":"09170428","confirmation":"09170428"}'
+wrong_pin='{"action":"changePin","currentPin":"000000","pin":"09170428","confirmation":"09170428"}'
+expect 403 "$(send "$member" bad "$change_pin")"
+expect 422 "$(send "$member" "$member_token" '{"action":"changePin","currentPin":"57962318","pin":"09170428","confirmation":"000000"}')"
+expect 422 "$(send "$member" "$member_token" '{"action":"changePin","currentPin":"57962318","pin":"57962318","confirmation":"57962318"}')"
+expect 403 "$(send "$member" "$member_token" "$wrong_pin")"
+expect 422 "$(send "$member" "$member_token" '{"action":"changePin","currentPin":"57962318","pin":"1234","confirmation":"1234"}')"
+expect 200 "$(send "$member" "$member_token" "$change_pin")"
+get "$member" api.php > "$temp/after-change"
+read_json "$temp/after-change" '$before=json_decode(file_get_contents(dirname($argv[1])."/state"),true); if($d["accounts"]!==$before["accounts"]) exit(1);'
+expect 401 "$(curl -sS -b "$other_session" -o "$temp/response" -w '%{http_code}' "$base""api.php")"
+expect 401 "$(curl -sS -b "$temp/old-session.cookies" -o "$temp/response" -w '%{http_code}' "$base""api.php")"
+get "$other_session" '' > "$temp/other-session"
+expect 401 "$(curl -sS -b "$other_session" --data-urlencode "csrf=$(form_token "$temp/other-session")" \
+    --data-urlencode 'username=cimember' --data-urlencode 'pin=57962318' -o "$temp/response" -w '%{http_code}' "$base")"
+login "$other_session" cimember 09170428 "$temp/other-session"
+get "$other_session" api.php > /dev/null
+for attempt in {1..12}; do
+    status="$(send "$member" "$member_token" "$wrong_pin")"
+    [[ "$status" == 429 ]] && break
+    expect 403 "$status"
+done
+expect 429 "$status"
 expect 200 "$(send "$admin" "$token" "{\"action\":\"setPin\",\"target\":$member_id,\"pin\":\"68120539\"}")"
 expect 401 "$(curl -sS -b "$member" -o "$temp/response" -w '%{http_code}' "$base""api.php")"
 php "$temp/peplog-private/bin/reports.php" --check

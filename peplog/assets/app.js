@@ -491,7 +491,7 @@ function renderPreferences() {
       </div>
       ${checkbox('weigh','Show the weight reminder on day six',prefs.weigh)}
     </section>
-    <div class="row-actions">${submit('Save preferences')}${button('Privacy notice','privacy',{glyph:'lock'})}</div>
+    <div class="row-actions">${submit('Save preferences')}${button('Change PIN','change-pin',{glyph:'lock'})}${button('Privacy notice','privacy',{glyph:'lock'})}</div>
   </form>`;
 }
 function tabs(items, active, action) {
@@ -973,10 +973,10 @@ function openSignOut() {
     ${formFooter('Sign out')}
   </form>`);
 }
-function pinField(title='PIN', autocomplete='new-password') {
+function pinField(title='PIN', {name='pin',hint=true}={}) {
   return field(title,
-    `<input type="password" name="pin" inputmode="numeric" autocomplete="${autocomplete}" pattern="[0-9]{6,12}" required maxlength="12">`,
-    t('6–12 digits'));
+    `<input type="password" name="${name}" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" required maxlength="12">`,
+    hint?t('6–12 digits'):'');
 }
 function showAccountError(form, text) {
   const error=form.querySelector('[role="alert"]');
@@ -1011,6 +1011,15 @@ function openSetPin() {
     ${formFooter('Save PIN')}
   </form>`);
 }
+function openChangePin() {
+  showDialog('Change PIN','',`<form id="change-pin-form" method="post" class="form-stack">
+    ${field('Current PIN','<input type="password" name="currentPin" inputmode="numeric" autocomplete="current-password" required maxlength="12" autofocus>')}
+    ${pinField('New PIN')}
+    ${pinField('Confirm new PIN',{name:'confirmation',hint:false})}
+    <p class="error" role="alert" hidden></p>
+    ${formFooter('Save PIN')}
+  </form>`);
+}
 async function saveUser(form) {
   const data=new FormData(form);
   const username=String(data.get('username')).trim().toLowerCase();
@@ -1024,6 +1033,14 @@ async function saveUser(form) {
 }
 async function savePin(form) {
   await write('setPin',{target:accounts[state.catalogUser].id,pin:form.elements.pin.value});
+  closeDialog();
+  notify('PIN updated');
+}
+async function saveOwnPin(form) {
+  const {currentPin,pin,confirmation}=form.elements;
+  if (pin.value!==confirmation.value) throw new Error('The new PINs must match.');
+  if (pin.value===currentPin.value) throw new Error('Choose a different PIN.');
+  await write('changePin',{currentPin:currentPin.value,pin:pin.value,confirmation:confirmation.value});
   closeDialog();
   notify('PIN updated');
 }
@@ -1147,6 +1164,7 @@ const actions={
   account:openSignOut,
   'add-user':openAddUser,
   'set-pin':openSetPin,
+  'change-pin':openChangePin,
   product:openProduct,
   remove:removeEntry,
   close:closeDialog
@@ -1247,6 +1265,7 @@ const forms={
   },
   'add-user-form':saveUser,
   'set-pin-form':savePin,
+  'change-pin-form':saveOwnPin,
   'product-form':saveProduct,
   'preferences-form':savePreferences
 };
@@ -1269,7 +1288,10 @@ document.addEventListener('submit',async event=>{
     if (submitter) submitter.disabled=false;
   }
 });
-dialog.addEventListener('close',()=>stopCapture(true));
+dialog.addEventListener('close',()=>{
+  stopCapture(true);
+  q('#change-pin-form',dialog)?.reset();
+});
 
 function showError(error) {
   const toast=q('#toast');

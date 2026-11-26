@@ -51,6 +51,9 @@ try {
         case 'preferences':
             savePreferences($db, $user, $input);
             break;
+        case 'changePin':
+            changeOwnPin($db, $user, $input);
+            break;
         case 'addUser':
         case 'setPin':
         case 'weightMonitor':

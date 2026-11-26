@@ -232,6 +232,34 @@ function signInUser(PDO $db, string $name, string $pin): void
     unset($_SESSION['csrf']);
 }
 
+function changeOwnPin(PDO $db, array $user, array $input): void
+{
+    $current = textValue($input, 'currentPin', 12);
+    $pin = textValue($input, 'pin', 12);
+    if ($pin !== textValue($input, 'confirmation', 12)) {
+        throw new RequestProblem(422, 'The new PINs must match.');
+    }
+    if ($pin === $current) {
+        throw new RequestProblem(422, 'Choose a different PIN.');
+    }
+
+    loginLimit($db, $_SERVER['REMOTE_ADDR'] ?? 'unknown', $user['username']);
+    if (!password_verify($current, $user['pin_hash'])) {
+        throw new RequestProblem(403, 'Check your current PIN.');
+    }
+    $hash = pinHash($pin);
+    if (!session_regenerate_id(true)) {
+        throw new RequestProblem(503, 'The request could not be completed. Try again shortly.');
+    }
+    $version = (int)$user['auth_version'];
+    $changed = query($db, 'UPDATE pl_users SET pin_hash=?,auth_version=auth_version+1 WHERE id=? AND auth_version=?',
+        [$hash, $user['id'], $version])->rowCount();
+    if ($changed !== 1) {
+        throw new RequestProblem(401, 'Sign in to continue.');
+    }
+    $_SESSION['auth_version'] = $version + 1;
+}
+
 function signOut(): void
 {
     $_SESSION = [];
