@@ -54,6 +54,9 @@ try {
         case 'changePin':
             changeOwnPin($db, $user, $input);
             break;
+        case 'acknowledgePrivacy':
+            query($db, 'UPDATE pl_users SET privacy_notice_seen=1 WHERE id=?', [$user['id']]);
+            break;
         case 'addUser':
         case 'setPin':
         case 'weightMonitor':

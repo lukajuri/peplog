@@ -35,6 +35,7 @@ function publicUser(array $user, array $grants): array
         'admin' => (bool)$user['is_admin'],
         'weightMonitor' => !$advanced && (bool)$user['weight_monitor'],
         'advancedWeightMonitor' => $advanced,
+        'privacyNoticeSeen' => !empty($user['privacy_notice_seen']),
         'visible' => $grants,
         'prefs' => [
             'lang' => $user['locale'], 'timeZone' => $user['timezone'], 'theme' => $user['theme'],
@@ -165,7 +166,7 @@ function updateBf511(array $saved, mixed $changes): array
         if ((!is_int($value) && !is_float($value)) || !is_finite((float)$value)
             || $value < $metric['min'] || $value > $metric['max']
             || abs($value - round($value, $metric['decimals'])) > 0.00000001) {
-            throw new RequestProblem(422, 'Check the BF511 reading ranges and decimal places.');
+            throw new RequestProblem(422, 'Check the reading ranges and decimal places.');
         }
         $saved[$name] = $metric['decimals'] === 0 ? (int)$value : round($value, $metric['decimals']);
     }

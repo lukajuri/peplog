@@ -83,6 +83,12 @@ login "$member" cimember 57962318 "$temp/patient"
 member_token="$(main_token "$temp/patient")"
 get "$member" api.php > "$temp/state"
 read_json "$temp/state" 'if(count($d["accounts"])!==1 || !$d["accounts"][0]["weightMonitor"] || $d["accounts"][0]["advancedWeightMonitor"] || count($d["products"])!==1 || $d["accounts"][0]["entries"]!==[]) exit(1);'
+read_json "$temp/state" 'if($d["accounts"][0]["privacyNoticeSeen"]) exit(1);'
+expect 200 "$(send "$member" "$member_token" '{"action":"acknowledgePrivacy"}')"
+get "$member" api.php > "$temp/state"
+read_json "$temp/state" 'if(!$d["accounts"][0]["privacyNoticeSeen"]) exit(1);'
+get "$admin" api.php > "$temp/admin-state"
+read_json "$temp/admin-state" 'foreach($d["accounts"] as $u) if($u["username"]==="ciadmin" && $u["privacyNoticeSeen"]) exit(1);'
 expect 403 "$(send "$member" "$member_token" "{\"action\":\"weightMonitor\",\"target\":$member_id,\"on\":false}")"
 expect 404 "$(send "$member" "$member_token" "{\"action\":\"saveEntry\",\"id\":\"$id\",\"type\":\"note\",\"date\":\"2020-01-01\",\"note\":\"Fixture\"}")"
 expect 422 "$(send "$member" "$member_token" '{"action":"saveEntry","type":"application","date":"2020-01-01","time":"08:00","productId":"ret-pen","amount":null}')"

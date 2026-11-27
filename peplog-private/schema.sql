@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS pl_users (
     weigh_reminder TINYINT NOT NULL DEFAULT 1,
     weight_monitor TINYINT NOT NULL DEFAULT 0,
     advanced_weight_monitor TINYINT NOT NULL DEFAULT 0,
+    privacy_notice_seen TINYINT NOT NULL DEFAULT 0,
     auth_version INT UNSIGNED NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

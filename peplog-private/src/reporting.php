@@ -103,7 +103,7 @@ function reportBf511Text(array $composition, string $locale): string
     if (!$composition) {
         return '';
     }
-    $lines = [translate('BF511 readings', $locale)];
+    $lines = [translate('Body composition readings', $locale)];
     $decimal = $locale === 'en' ? '.' : ',';
     foreach (BF511_METRICS as $name => $metric) {
         $summary = $composition[$name] ?? null;

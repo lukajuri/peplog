@@ -94,7 +94,7 @@ const typeLabel = { note:'Observation', application:'Application', weight:'Weigh
 const pageInfo = {
   calendar:['Calendar','calendar'], weekly:['Weekly summary','chart','Weekly'],
   monthly:['Monthly summary','monthly','Monthly'], settings:['Settings','settings'],
-  weight:['Weight monitoring','weight','Weight'], advancedWeight:['Advanced Weight Monitoring','chart','BF511'],
+  weight:['Weight monitoring','weight','Weight'], advancedWeight:['Advanced Weight Monitoring','chart','Weight'],
   admin:['Admin','shield']
 };
 const pagePermissions={admin:'admin',weight:'weightMonitor',advancedWeight:'advancedWeightMonitor'};
@@ -303,7 +303,7 @@ function bf511Value(amount, metric) {
 }
 function renderAdvancedWeightMonitoring() {
   const measurements=weightEntries();
-  const heading=pageHeader('Advanced Weight Monitoring','OMRON BF511',logWeightButton({glyph:'plus',variant:'primary',attrs:'data-today="true"'}));
+  const heading=pageHeader('Advanced Weight Monitoring','',logWeightButton({glyph:'plus',variant:'primary',attrs:'data-today="true"'}));
   if (!measurements.length) {
     return heading+`<section class="card panel"><p class="muted">${label('Log a weight to start your chart.')}</p></section>`;
   }
@@ -319,7 +319,7 @@ function renderAdvancedWeightMonitoring() {
   </tr>`).join('');
   return heading+`<section class="card panel weight-panel">
     ${tabs([['weight','Weight'],...metrics.map(([name,details])=>[name,details.label])],state.weightMetric,'weight-metric')}
-    ${points.length?weightChart(points,metric):`<p class="muted">${label('No BF511 readings for this metric yet.')}</p>`}
+    ${points.length?weightChart(points,metric):`<p class="muted">${label('No readings for this metric yet.')}</p>`}
     <h2 id="composition-history-title">${label('Weigh-in history')}</h2>
     <div class="composition-table" role="region" aria-labelledby="composition-history-title" tabindex="0">
       <table class="catalog"><thead><tr><th scope="col">${label('Date')}</th><th scope="col">${label('Weight')}</th>
@@ -433,7 +433,7 @@ function reportNotes(data) {
 function reportBf511(composition) {
   const metrics=Object.entries(bf511Metrics).filter(([name])=>composition?.[name]?.readings?.length);
   if (!metrics.length) return '';
-  return `<section class="report-composition"><h3>${label('BF511 readings')}</h3>
+  return `<section class="report-composition"><h3>${label('Body composition readings')}</h3>
     ${metrics.map(([name,metric])=>{
       const {readings,change}=composition[name];
       const dates=readings.map(row=>shortDate(row.date)+' · '+bf511Value(row.value,metric));
@@ -741,7 +741,7 @@ function openWeight(existing=null, useToday=false) {
       <p class="help">${label('Scroll or use the arrow keys to change each value.')}</p>
     </fieldset>
     ${advanced?`<fieldset class="bf511-fields">
-      <legend>${label('BF511 readings')}</legend>
+      <legend>${label('Body composition readings')}</legend>
       <p class="help">${label('Select “Not recorded” for any unavailable reading.')}</p>
       <div class="bf511-pickers">${Object.entries(bf511Metrics).map(([name,metric])=>
         bf511Picker(name,metric,saved?.bf511?.[name],separator)
@@ -854,7 +854,7 @@ async function saveWeight(form) {
     for (const [name,metric] of Object.entries(bf511Metrics)) {
       const whole=selected(name);
       const value=whole<metric.min?null:whole+(metric.decimals?selected(name+'-decimal')/10:0);
-      if (value>metric.max) throw new Error('Check the BF511 reading ranges and decimal places.');
+      if (value>metric.max) throw new Error('Check the reading ranges and decimal places.');
       if (value!==(state.entry.saved?.bf511?.[name]??null)) edits[name]=value;
     }
     if (Object.keys(edits).length) data.bf511=edits;
@@ -960,7 +960,9 @@ function showEmail() {
     <div>${button('Back to summary','close',{variant:'primary'})}</div>
   </div>`);
 }
-function openPrivacy() {
+let privacyAcknowledgementPending=false;
+function openPrivacy(firstVisit=false) {
+  privacyAcknowledgementPending=firstVisit;
   showDialog('Privacy notice','',`<div class="form-stack privacy-copy">
     <p>${label('The journal stores your entries for logging observations and monitoring health and progress.')}</p>
     <p>${h(message('OpenAI can process voice recordings and entries for transcription and analysis. Weekly and monthly summaries for each account are emailed to {recipient} for progress review.',{recipient:reportRecipient}))}</p>
@@ -1149,7 +1151,7 @@ const actions={
   'older-report':()=>moveReport(-1),
   'newer-report':()=>moveReport(1),
   theme:toggleTheme,
-  privacy:openPrivacy,
+  privacy:()=>openPrivacy(),
   'admin-section':control=>changeAdminSelection(control,'adminSection'),
   'admin-user':control=>changeAdminSelection(control,'catalogUser'),
   'catalog-route':control=>changeAdminSelection(control,'catalogRoute'),
@@ -1291,6 +1293,10 @@ document.addEventListener('submit',async event=>{
 dialog.addEventListener('close',()=>{
   stopCapture(true);
   q('#change-pin-form',dialog)?.reset();
+  if (privacyAcknowledgementPending) {
+    privacyAcknowledgementPending=false;
+    write('acknowledgePrivacy').catch(showError);
+  }
 });
 
 function showError(error) {
@@ -1360,13 +1366,7 @@ async function start() {
     state.selected=today();
     state.month=state.selected.slice(0,7);
     render();
-    let shown=false;
-    try {
-      const key='peplog-privacy-v1:'+account().id;
-      shown=sessionStorage.getItem(key)==='shown';
-      if (!shown) sessionStorage.setItem(key,'shown');
-    } catch {}
-    if (!shown) openPrivacy();
+    if (!account().privacyNoticeSeen) openPrivacy(true);
     updateClock();
   } catch {
     q('#startup-error').hidden=false;

@@ -59,7 +59,7 @@ must(str_contains(reportBody($month, 'Fixture analysis.', $user['username']), '1
 $user['advanced_weight_monitor'] = 0;
 must(reportSnapshot($db, $user, 'weekly', $at)['bf511'] === [], 'A disabled user was included in the advanced report');
 unset($week['bf511']);
-must(!str_contains(reportBody($week, 'Fixture analysis.', $user['username']), 'BF511 readings'), 'Legacy reports should render without BF511 data');
+must(!str_contains(reportBody($week, 'Fixture analysis.', $user['username']), 'Body composition readings'), 'Legacy reports should render without body composition data');
 $other = query($db, 'SELECT * FROM pl_users WHERE username=?', ['ciadmin'])->fetch();
 must(savedReport($db, $other, 'weekly', '2027-02-28') === null, 'Another account can see this report');
 foreach (array_keys(LOCALES) as $locale) {

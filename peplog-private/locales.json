@@ -228,12 +228,12 @@
     "Skeletal muscle (%)": "Muscolo scheletrico (%)",
     "Visceral fat level": "Livello di grasso viscerale",
     "Adv. log weight": "Registra peso (avanz.)",
-    "No BF511 readings for this metric yet.": "Ancora nessuna lettura BF511 per questo parametro.",
     "Weigh-in history": "Storico delle pesate",
-    "BF511 readings": "Letture BF511",
     "percentage points": "punti percentuali",
     "Select “Not recorded” for any unavailable reading.": "Seleziona «Non registrato» per ogni valore non disponibile.",
-    "Check the BF511 reading ranges and decimal places.": "Controlla gli intervalli e le cifre decimali delle letture BF511."
+    "Body composition readings": "Misurazioni della composizione corporea",
+    "No readings for this metric yet.": "Nessuna misurazione per questo parametro.",
+    "Check the reading ranges and decimal places.": "Controlla gli intervalli e le cifre decimali delle misurazioni."
   },
   "ru": {
     "A weight entry already exists for this date.": "На эту дату уже записан вес.",
@@ -464,12 +464,12 @@
     "Skeletal muscle (%)": "Скелетные мышцы (%)",
     "Visceral fat level": "Уровень висцерального жира",
     "Adv. log weight": "Расш. запись веса",
-    "No BF511 readings for this metric yet.": "Для этого показателя ещё нет данных BF511.",
     "Weigh-in history": "История взвешиваний",
-    "BF511 readings": "Показания BF511",
     "percentage points": "процентных пункта",
     "Select “Not recorded” for any unavailable reading.": "Для отсутствующего показания выберите «Не записано».",
-    "Check the BF511 reading ranges and decimal places.": "Проверьте диапазоны и число знаков после запятой в показаниях BF511."
+    "Body composition readings": "Показатели состава тела",
+    "No readings for this metric yet.": "Для этого показателя пока нет данных.",
+    "Check the reading ranges and decimal places.": "Проверьте диапазоны и число знаков после запятой."
   },
   "uk": {
     "A weight entry already exists for this date.": "На цю дату вже записано вагу.",
@@ -700,12 +700,12 @@
     "Skeletal muscle (%)": "Скелетні м’язи (%)",
     "Visceral fat level": "Рівень вісцерального жиру",
     "Adv. log weight": "Розш. запис ваги",
-    "No BF511 readings for this metric yet.": "Для цього показника ще немає даних BF511.",
     "Weigh-in history": "Історія зважувань",
-    "BF511 readings": "Показники BF511",
     "percentage points": "відсоткових пунктів",
     "Select “Not recorded” for any unavailable reading.": "Для відсутнього показника виберіть «Не записано».",
-    "Check the BF511 reading ranges and decimal places.": "Перевірте діапазони та кількість десяткових знаків показників BF511."
+    "Body composition readings": "Показники складу тіла",
+    "No readings for this metric yet.": "Для цього показника ще немає даних.",
+    "Check the reading ranges and decimal places.": "Перевірте діапазони та кількість десяткових знаків."
   },
   "de": {
     "A weight entry already exists for this date.": "Für dieses Datum gibt es bereits einen Gewichtseintrag.",
@@ -936,12 +936,12 @@
     "Skeletal muscle (%)": "Skelettmuskulatur (%)",
     "Visceral fat level": "Viszeralfettstufe",
     "Adv. log weight": "Gewicht erfassen (erw.)",
-    "No BF511 readings for this metric yet.": "Für diesen Messwert liegen noch keine BF511-Daten vor.",
     "Weigh-in history": "Bisherige Messungen",
-    "BF511 readings": "BF511-Messwerte",
     "percentage points": "Prozentpunkte",
     "Select “Not recorded” for any unavailable reading.": "Wählen Sie „Nicht erfasst“, wenn ein Messwert fehlt.",
-    "Check the BF511 reading ranges and decimal places.": "Prüfen Sie Wertebereiche und Nachkommastellen der BF511-Messwerte."
+    "Body composition readings": "Körperzusammensetzung",
+    "No readings for this metric yet.": "Für diesen Messwert liegen noch keine Daten vor.",
+    "Check the reading ranges and decimal places.": "Prüfen Sie Wertebereiche und Nachkommastellen."
   },
   "es": {
     "A weight entry already exists for this date.": "Ya hay un registro de peso para esta fecha.",
@@ -1172,12 +1172,12 @@
     "Skeletal muscle (%)": "Músculo esquelético (%)",
     "Visceral fat level": "Nivel de grasa visceral",
     "Adv. log weight": "Registrar peso (avanz.)",
-    "No BF511 readings for this metric yet.": "Todavía no hay lecturas BF511 para esta métrica.",
     "Weigh-in history": "Historial de pesajes",
-    "BF511 readings": "Lecturas BF511",
     "percentage points": "puntos porcentuales",
     "Select “Not recorded” for any unavailable reading.": "Selecciona «Sin registrar» si no tienes una lectura.",
-    "Check the BF511 reading ranges and decimal places.": "Comprueba los rangos y los decimales de las lecturas BF511."
+    "Body composition readings": "Mediciones de composición corporal",
+    "No readings for this metric yet.": "Todavía no hay lecturas para esta métrica.",
+    "Check the reading ranges and decimal places.": "Comprueba los rangos y los decimales de las mediciones."
   },
   "fr": {
     "A weight entry already exists for this date.": "Un poids est déjà enregistré pour cette date.",
@@ -1408,12 +1408,12 @@
     "Skeletal muscle (%)": "Muscle squelettique (%)",
     "Visceral fat level": "Niveau de graisse viscérale",
     "Adv. log weight": "Saisie avancée du poids",
-    "No BF511 readings for this metric yet.": "Aucun relevé BF511 pour cet indicateur pour le moment.",
     "Weigh-in history": "Historique des pesées",
-    "BF511 readings": "Relevés BF511",
     "percentage points": "points de pourcentage",
     "Select “Not recorded” for any unavailable reading.": "Sélectionnez « Non renseigné » si une valeur manque.",
-    "Check the BF511 reading ranges and decimal places.": "Vérifiez les plages et le nombre de décimales des relevés BF511."
+    "Body composition readings": "Mesures de composition corporelle",
+    "No readings for this metric yet.": "Aucun relevé pour cet indicateur pour le moment.",
+    "Check the reading ranges and decimal places.": "Vérifiez les plages et les décimales des relevés."
   },
   "sr-Latn": {
     "A weight entry already exists for this date.": "Za ovaj datum već postoji unos težine.",
@@ -1644,12 +1644,12 @@
     "Skeletal muscle (%)": "Skeletni mišići (%)",
     "Visceral fat level": "Nivo visceralne masti",
     "Adv. log weight": "Napr. unos težine",
-    "No BF511 readings for this metric yet.": "Još nema očitavanja BF511 za ovaj parametar.",
     "Weigh-in history": "Istorija merenja težine",
-    "BF511 readings": "Očitavanja BF511",
     "percentage points": "procentnih poena",
     "Select “Not recorded” for any unavailable reading.": "Za očitavanje koje nedostaje izaberi „Nije zabeleženo“.",
-    "Check the BF511 reading ranges and decimal places.": "Proverite raspone i decimalna mesta očitavanja BF511."
+    "Body composition readings": "Merenja sastava tela",
+    "No readings for this metric yet.": "Još nema merenja za ovaj pokazatelj.",
+    "Check the reading ranges and decimal places.": "Proveri raspone i decimale merenja."
   },
   "hr": {
     "A weight entry already exists for this date.": "Za ovaj datum već postoji unos težine.",
@@ -1880,12 +1880,12 @@
     "Skeletal muscle (%)": "Skeletni mišići (%)",
     "Visceral fat level": "Razina visceralne masti",
     "Adv. log weight": "Napr. unos težine",
-    "No BF511 readings for this metric yet.": "Još nema očitanja BF511 za ovaj pokazatelj.",
     "Weigh-in history": "Povijest vaganja",
-    "BF511 readings": "Očitanja BF511",
     "percentage points": "postotnih bodova",
     "Select “Not recorded” for any unavailable reading.": "Za očitanje koje nedostaje odaberi „Nije zabilježeno“.",
-    "Check the BF511 reading ranges and decimal places.": "Provjerite raspone i decimalna mjesta očitanja BF511."
+    "Body composition readings": "Mjerenja sastava tijela",
+    "No readings for this metric yet.": "Još nema mjerenja za ovaj pokazatelj.",
+    "Check the reading ranges and decimal places.": "Provjeri raspone i decimale mjerenja."
   },
   "sl": {
     "A weight entry already exists for this date.": "Za ta datum je teža že vnesena.",
@@ -2116,11 +2116,11 @@
     "Skeletal muscle (%)": "Skeletne mišice (%)",
     "Visceral fat level": "Stopnja visceralne maščobe",
     "Adv. log weight": "Napr. vnos teže",
-    "No BF511 readings for this metric yet.": "Za ta parameter še ni meritev BF511.",
     "Weigh-in history": "Zgodovina tehtanj",
-    "BF511 readings": "Meritve BF511",
     "percentage points": "odstotne točke",
     "Select “Not recorded” for any unavailable reading.": "Za manjkajočo meritev izberi »Ni zabeleženo«.",
-    "Check the BF511 reading ranges and decimal places.": "Preveri razpone in decimalna mesta meritev BF511."
+    "Body composition readings": "Meritve telesne sestave",
+    "No readings for this metric yet.": "Za ta kazalnik še ni meritev.",
+    "Check the reading ranges and decimal places.": "Preveri razpone in decimalke meritev."
   }
 }
