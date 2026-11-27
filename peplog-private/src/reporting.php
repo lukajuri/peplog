@@ -41,6 +41,8 @@ function reportSnapshot(PDO $db, array $user, string $kind, DateTimeImmutable $e
             $applications[] = [
                 'date' => $entry['date'], 'time' => $entry['time'], 'product' => $entry['snapshot']['name'],
                 'method' => $entry['route'], 'reported_amount' => $entry['amount'], 'unit' => $entry['unit'],
+                'calculated_mg' => recordedMilligrams($entry),
+                'approximate' => $entry['route'] === 'nasal',
             ];
         }
         if ($entry['note'] !== '') {
@@ -165,6 +167,14 @@ function processAnalysis(PDO $db, array $job): void
             }
             unset($note);
             $input['applications'] = array_slice($input['applications'], -200);
+            foreach ($input['applications'] as &$application) {
+                if (($application['calculated_mg'] ?? null) !== null) {
+                    $application['reported_amount'] = $application['calculated_mg'];
+                    $application['unit'] = 'mg';
+                    unset($application['calculated_mg']);
+                }
+            }
+            unset($application);
             $analysis = analyzeReport($input, $report['locale']);
         }
         query($db, 'UPDATE pl_reports SET ai_text=?,next_ai_at=NULL WHERE id=?', [$analysis, $job['id']]);

@@ -60,6 +60,30 @@ function entries(PDO $db, int $userId, ?string $start = null, ?string $end = nul
     }, query($db, $sql . ' ORDER BY entry_date,entry_time,id', $args)->fetchAll());
 }
 
+function recordedMilligrams(array $entry): ?float
+{
+    $amount = $entry['amount'] ?? null;
+    if (!is_numeric($amount) || $amount <= 0) return null;
+    $id = $entry['productId'] ?? '';
+    $labels = [
+        'ret-pen' => '40 mg', 'bpc-pen' => '5 mg', 'ghk-pen' => '100 mg',
+        'ipa-pen' => '10 mg', 'mel-pen' => '10 mg', 'pt-pen' => '10 mg',
+        'sel-pen' => '10 mg', 'sem-pen' => '30 mg', 'mots-pen' => '10 mg',
+        'tes-pen' => '10 mg / 2 mL',
+    ];
+    if (($entry['route'] ?? '') === 'pen' && ($entry['unit'] ?? '') === 'clicks'
+        && isset($labels[$id]) && ($entry['snapshot']['label'] ?? '') === $labels[$id]) {
+        return round((float)$amount * (float)$labels[$id] / 200, 6);
+    }
+    $nasal = ['bpc-nas', 'ipa-nas', 'mel-nas', 'oxy-nas', 'pt-nas', 'sel-nas', 'sem-nas'];
+    if (($entry['route'] ?? '') === 'nasal' && ($entry['unit'] ?? '') === 'sprays'
+        && in_array($id, $nasal, true) && isset($entry['mass'], $entry['volume'])
+        && (float)$entry['mass'] > 0 && (float)$entry['volume'] === 10.0) {
+        return round((float)$amount * (float)$entry['mass'] / 85, 6);
+    }
+    return ($entry['unit'] ?? '') === 'mg' ? (float)$amount : null;
+}
+
 function hydrate(PDO $db, array $user, bool $withLanguages = false): array
 {
     $id = (int)$user['id'];
@@ -81,6 +105,10 @@ function hydrate(PDO $db, array $user, bool $withLanguages = false): array
     foreach ($records as &$record) {
         if ($record['id'] === $id) {
             $record['entries'] = entries($db, $id);
+            foreach ($record['entries'] as &$entry) {
+                if (($entry['type'] ?? '') === 'application') $entry['calculatedMg'] = recordedMilligrams($entry);
+            }
+            unset($entry);
             if (!$record['advancedWeightMonitor']) {
                 foreach ($record['entries'] as &$entry) {
                     unset($entry['bf511']);

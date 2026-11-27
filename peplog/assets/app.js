@@ -231,7 +231,8 @@ function renderRecord(entry) {
   let caption=entry.note??'';
   if (entry.type==='application') {
     title=productName(entry.snapshot);
-    caption=(entry.time||t('Time not recorded'))+' · '+t(routes[entry.route])+' · '+amountText(entry)+(caption?'\n'+caption:'');
+    const calculated=entry.calculatedMg==null?'':` · ${entry.route==='nasal'?'≈ ':''}${num(entry.calculatedMg,{maximumFractionDigits:6})} mg`;
+    caption=(entry.time||t('Time not recorded'))+' · '+t(routes[entry.route])+' · '+amountText(entry)+calculated+(caption?'\n'+caption:'');
   } else if (entry.type==='weight') {
     caption=amountText(entry);
   }
@@ -660,7 +661,7 @@ function renderProductFields() {
   const mg=value=>num(value,{minimumFractionDigits:1,maximumFractionDigits:1})+' mg';
   if (entry.route==='pen') {
     container.innerHTML=amountSelect('Recorded clicks',ints,displayCount,prev?.amount,true)
-      +info(t('Clicks are saved as a count. A conversion has to be verified for the exact pen.'));
+      ;
     return;
   }
   if (entry.route==='syringe') {
@@ -672,7 +673,7 @@ function renderProductFields() {
       `<div class="form-grid">${field('Total on label (mg)',decimalInput('mass',prev?.mass))}
         ${field('Bottle volume (mL)',decimalInput('volume',prev?.volume))}</div>
         <p class="help" id="concentration" aria-live="polite"></p>`+
-      info(t('An amount per spray requires a verified volume per spray for this pump.'));
+      '';
     showConcentration();
     return;
   }

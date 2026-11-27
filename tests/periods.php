@@ -13,6 +13,10 @@ function must(bool $condition, string $message): void
     }
 }
 
+must(recordedMilligrams(['productId'=>'ret-pen','route'=>'pen','unit'=>'clicks','amount'=>10,'snapshot'=>['label'=>'40 mg']]) === 2.0, 'Pen conversion');
+must(recordedMilligrams(['productId'=>'ret-pen','route'=>'pen','unit'=>'clicks','amount'=>10,'snapshot'=>['label'=>'20 mg']]) === null, 'Unmatched pen variant');
+must(recordedMilligrams(['productId'=>'bpc-nas','route'=>'nasal','unit'=>'sprays','amount'=>1,'mass'=>10,'volume'=>10]) === 0.117647, 'Nasal conversion');
+must(recordedMilligrams(['productId'=>'bpc-nas','route'=>'nasal','unit'=>'sprays','amount'=>1,'mass'=>10,'volume'=>5]) === null, 'Unknown bottle volume');
 $zone = new DateTimeZone('Europe/Ljubljana');
 $day = new DateTimeImmutable('2028-02-27 23:58:00', $zone);
 must(reportEnd('weekly', $day)->format('Y-m-d H:i') === '2028-02-27 23:59', 'Sunday boundary');
