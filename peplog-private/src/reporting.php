@@ -130,6 +130,17 @@ function reportBf511Text(array $composition, string $locale): string
     return "\n\n" . implode("\n", $lines);
 }
 
+function reportAnalysisDetails(?string $saved): array
+{
+    if ($saved !== null && str_starts_with($saved, '{"text":')) {
+        $analysis = json_decode($saved, true);
+        if (is_string($analysis['text'] ?? null) && is_array($analysis['sources'] ?? null)) {
+            return [$analysis['text'], $analysis['sources']];
+        }
+    }
+    return [$saved, []];
+}
+
 function reportBody(array $data, string $analysis, string $username): string
 {
     $locale = $data['locale'];
@@ -146,11 +157,15 @@ function reportBody(array $data, string $analysis, string $username): string
     } elseif ($first) {
         $facts .= "\n" . translate('One weight measurement was recorded ({weight}).', $locale, ['weight' => $first['kg'] . ' kg']);
     }
+    [$analysis, $sources] = reportAnalysisDetails($analysis);
+    $references = array_map(static fn(array $source): string =>
+        '[' . $source['number'] . '] ' . $source['title'] . "\n" . $source['url'], $sources);
     return translate('Account holder', $locale) . '  ' . $username . "\n"
         . reportDate($data['from'], $locale) . ' – ' . reportDate($data['to'], $locale)
         . ' (' . $data['time_zone'] . ")\n\n"
         . $facts . reportBf511Text($data['bf511'] ?? [], $locale)
-        . "\n\n" . translate('AI analysis', $locale) . "\n" . $analysis . "\n";
+        . "\n\n" . translate('AI analysis', $locale) . "\n" . $analysis . "\n"
+        . ($references ? "\n" . implode("\n\n", $references) . "\n" : '');
 }
 
 function processAnalysis(PDO $db, array $job): void
@@ -215,6 +230,7 @@ function savedReport(PDO $db, array $user, string $kind, string $end): ?array
     if (!$report) {
         return null;
     }
-    return ['data' => decode($report['payload']), 'analysis' => $report['ai_text'],
+    [$analysis, $sources] = reportAnalysisDetails($report['ai_text']);
+    return ['data' => decode($report['payload']), 'analysis' => $analysis, 'analysisSources' => $sources,
         'mailState' => $report['mail_state'], 'sentAt' => $report['sent_at']];
 }

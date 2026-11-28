@@ -475,3 +475,4 @@ dialog .tabs { margin: 0; }
 .chart-dots circle { fill: var(--teal); stroke: var(--paper); stroke-width: 1.5; }
 .weight-table summary { cursor: pointer; color: var(--blue); font-weight: 680; }
 .analysis-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.analysis-text a { color: var(--blue); }

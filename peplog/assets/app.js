@@ -445,6 +445,17 @@ function reportBf511(composition) {
     }).join('')}
   </section>`;
 }
+function renderReportAI(stored) {
+  if (!stored?.analysis) return '';
+  const sources=new Map((stored.analysisSources??[]).map(source=>[`[${source.number}]`,source]));
+  const content=stored.analysis.split(/(\[\d{1,3}\])/).map(part=>{
+    const source=sources.get(part);
+    if (!source?.url?.startsWith('https://')) return h(part);
+    return `<a href="${h(source.url)}" target="_blank" rel="noopener noreferrer" title="${h(source.title)}">${h(part)}</a>`;
+  }).join('');
+  return `<p class="analysis-text">${content}</p>`;
+}
+
 function renderReport(kind) {
   const data=reportData(kind);
   const stored=reportCache.get(kind+':'+data.range.to);
@@ -469,7 +480,7 @@ function renderReport(kind) {
       <p class="muted small">${label(stored?.mailState==='sent'?'Email sent':stored?.mailState==='uncertain'?'Email delivery could not be confirmed.':'Scheduled for delivery')}</p>
     </section></div>
     <section class="card panel analysis-panel"><h2>${label('AI analysis')}</h2>
-      <div class="analysis-copy">${stored?.analysis?`<p class="analysis-text">${h(stored.analysis)}</p>`:
+      <div class="analysis-copy">${renderReportAI(stored)||
         `<p class="muted">${label('The scheduled analysis will appear here.')}</p>`}</div>
     </section>`;
 }
@@ -957,7 +968,7 @@ function showEmail() {
     </dl>
     ${reportAnalysis(data).map(line=>`<p>${h(line)}</p>`).join('')}
     ${reportBf511(stored?.data?.bf511)}
-    ${stored?.analysis?`<p class="analysis-text">${h(stored.analysis)}</p>`:''}
+    ${renderReportAI(stored)}
     <div>${button('Back to summary','close',{variant:'primary'})}</div>
   </div>`);
 }
